@@ -1,90 +1,69 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-<html>
-<head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <meta http-equiv="Content-Style-Type" content="text/css">
-  <title></title>
-  <meta name="Generator" content="Cocoa HTML Writer">
-  <meta name="CocoaVersion" content="2685.3">
-  <style type="text/css">
-    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
-    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
-  </style>
-</head>
-<body>
-<p class="p1">&lt;!doctype html&gt;</p>
-<p class="p1">&lt;html lang="en"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;head&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta charset="UTF-8" /&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;meta name="viewport" content="width=device-width, initial-scale=1.0" /&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;title&gt;Trainual Chat&lt;/title&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- n8n chat styles --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;link</p>
-<p class="p1"><span class="Apple-converted-space">      </span>href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css"</p>
-<p class="p1"><span class="Apple-converted-space">      </span>rel="stylesheet"</p>
-<p class="p1"><span class="Apple-converted-space">    </span>/&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- Trainual theme variables (these work for the EMBEDDED widget) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>:root {</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-primary: #e74266; <span class="Apple-converted-space">        </span>/* Trainual pink */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-primary-shade-50: #db4061;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-primary-shade-100: #cf3c5c;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-secondary: #20b69e; <span class="Apple-converted-space">      </span>/* Trainual teal */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-secondary-shade-50: #1ca08a;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-dark: #101330;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-light: #f2f4f8;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--color-white: #ffffff;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--border-radius: 16px;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,</p>
-<p class="p1"><span class="Apple-converted-space">          </span>Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--toggle--background: var(--chat--color-primary);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--toggle--hover--background: var(--chat--color-primary-shade-50);</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--toggle--active--background: var(--chat--color-primary-shade-100);</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">        </span>/* Optional sizing */</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--window--width: 400px;</p>
-<p class="p1"><span class="Apple-converted-space">        </span>--chat--window--height: 620px;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>}</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>/* Optional: make the page neutral; chat renders as a floating widget in window mode */</p>
-<p class="p1"><span class="Apple-converted-space">      </span>body { margin: 0; background: #fff; }</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/style&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;/head&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;body&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;!-- target container (optional; widget can inject itself, but target is clearer) --&gt;</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;div id="n8n-chat"&gt;&lt;/div&gt;</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;script type="module"&gt;</p>
-<p class="p1"><span class="Apple-converted-space">      </span>import { createChat } from "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";</p>
-<p class="p2"><br></p>
-<p class="p1"><span class="Apple-converted-space">      </span>createChat({</p>
-<p class="p1"><span class="Apple-converted-space">        </span>webhookUrl: "https://trainual.app.n8n.cloud/webhook/d0b07f53-cca1-4e28-8ec0-2146ae550a8c/chat",</p>
-<p class="p1"><span class="Apple-converted-space">        </span>target: "#n8n-chat",</p>
-<p class="p1"><span class="Apple-converted-space">        </span>mode: "window", // "window" = floating button + popup, "fullscreen" = fills container :contentReference[oaicite:2]{index=2}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>showWelcomeScreen: false,</p>
-<p class="p1"><span class="Apple-converted-space">        </span>initialMessages: [</p>
-<p class="p1"><span class="Apple-converted-space">          </span>"Hi there! 👋",</p>
-<p class="p1"><span class="Apple-converted-space">          </span>"How can I help you with Trainual today?"</p>
-<p class="p1"><span class="Apple-converted-space">        </span>],</p>
-<p class="p1"><span class="Apple-converted-space">        </span>i18n: {</p>
-<p class="p1"><span class="Apple-converted-space">          </span>en: {</p>
-<p class="p1"><span class="Apple-converted-space">            </span>title: "Trainual Assistant",</p>
-<p class="p1"><span class="Apple-converted-space">            </span>subtitle: "Ask me anything about onboarding, SOPs, and training.",</p>
-<p class="p1"><span class="Apple-converted-space">            </span>inputPlaceholder: "Type your question…",</p>
-<p class="p1"><span class="Apple-converted-space">            </span>getStarted: "New conversation",</p>
-<p class="p1"><span class="Apple-converted-space">            </span>footer: ""</p>
-<p class="p1"><span class="Apple-converted-space">          </span>}</p>
-<p class="p1"><span class="Apple-converted-space">        </span>}</p>
-<p class="p1"><span class="Apple-converted-space">      </span>});</p>
-<p class="p1"><span class="Apple-converted-space">    </span>&lt;/script&gt;</p>
-<p class="p1"><span class="Apple-converted-space">  </span>&lt;/body&gt;</p>
-<p class="p1">&lt;/html&gt;</p>
-</body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Trainual Chat</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css"
+    />
+
+    <style>
+      :root {
+        --chat--color-primary: #e74266;
+        --chat--color-primary-shade-50: #db4061;
+        --chat--color-primary-shade-100: #cf3c5c;
+
+        --chat--color-secondary: #20b69e;
+        --chat--color-secondary-shade-50: #1ca08a;
+
+        --chat--color-dark: #101330;
+        --chat--color-light: #f2f4f8;
+        --chat--color-white: #ffffff;
+
+        --chat--border-radius: 16px;
+        --chat--font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+
+        --chat--toggle--background: var(--chat--color-primary);
+        --chat--toggle--hover--background: var(--chat--color-primary-shade-50);
+        --chat--toggle--active--background: var(--chat--color-primary-shade-100);
+
+        --chat--window--width: 400px;
+        --chat--window--height: 620px;
+      }
+
+      body {
+        margin: 0;
+        background: #fff;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="n8n-chat"></div>
+
+    <script type="module">
+      import { createChat } from "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
+
+      createChat({
+        webhookUrl: "https://trainual.app.n8n.cloud/webhook/d0b07f53-cca1-4e28-8ec0-2146ae550a8c/chat",
+        target: "#n8n-chat",
+        mode: "window",
+        showWelcomeScreen: false,
+        initialMessages: ["Hi there! 👋", "How can I help you with Trainual today?"],
+        i18n: {
+          en: {
+            title: "Trainual Assistant",
+            subtitle: "Ask me anything about onboarding, SOPs, and training.",
+            inputPlaceholder: "Type your question…",
+            getStarted: "New conversation",
+            footer: ""
+          }
+        }
+      });
+    </script>
+  </body>
 </html>
