@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Trainual Chat</title>
+    <title>Trainual Assistant</title>
 
+    <!-- n8n chat base styles -->
     <link
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/npm/@n8n/chat/dist/style.css"
@@ -12,32 +13,58 @@
 
     <style>
       :root {
-        --chat--color-primary: #e74266;
+        /* Trainual brand */
+        --trainual-pink: #e74266;
+        --trainual-navy: #101330;
+        --trainual-bg: #f2f4f8;
+        --trainual-border: #e6e9f1;
+
+        /* n8n variables */
+        --chat--color-primary: var(--trainual-pink);
         --chat--color-primary-shade-50: #db4061;
         --chat--color-primary-shade-100: #cf3c5c;
 
-        --chat--color-secondary: #20b69e;
-        --chat--color-secondary-shade-50: #1ca08a;
-
-        --chat--color-dark: #101330;
-        --chat--color-light: #f2f4f8;
+        --chat--color-dark: var(--trainual-navy);
+        --chat--color-light: var(--trainual-bg);
         --chat--color-white: #ffffff;
 
-        --chat--border-radius: 16px;
-        --chat--font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+        --chat--border-radius: 18px;
+        --chat--window--width: 420px;
+        --chat--window--height: 640px;
 
-        --chat--toggle--background: var(--chat--color-primary);
-        --chat--toggle--hover--background: var(--chat--color-primary-shade-50);
-        --chat--toggle--active--background: var(--chat--color-primary-shade-100);
-
-        --chat--window--width: 400px;
-        --chat--window--height: 620px;
+        --chat--toggle--size: 60px;
+        --chat--toggle--background: var(--trainual-pink);
+        --chat--toggle--hover--background: #db4061;
+        --chat--toggle--active--background: #cf3c5c;
       }
 
       body {
         margin: 0;
-        background: #fff;
+        background: #ffffff;
+      }
+
+      /* Force input to be usable (fixes typing bug) */
+      .chat-inputs {
+        display: flex !important;
+        gap: 10px !important;
+        padding: 14px !important;
+        background: #fff !important;
+        border-top: 1px solid var(--trainual-border) !important;
+      }
+
+      .chat-inputs textarea {
+        flex: 1 !important;
+        min-height: 44px !important;
+        resize: none !important;
+        padding: 12px 14px !important;
+        border-radius: 999px !important;
+        border: 1px solid var(--trainual-border) !important;
+        font-size: 14px !important;
+        outline: none !important;
+      }
+
+      .chat-inputs textarea:focus {
+        border-color: var(--trainual-pink) !important;
       }
     </style>
   </head>
@@ -49,18 +76,25 @@
       import { createChat } from "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
 
       createChat({
-        webhookUrl: "https://trainual.app.n8n.cloud/webhook/d0b07f53-cca1-4e28-8ec0-2146ae550a8c",
         target: "#n8n-chat",
         mode: "window",
+
+        webhookUrl:
+          "https://trainual.app.n8n.cloud/webhook/d0b07f53-cca1-4e28-8ec0-2146ae550a8c/chat",
+
         showWelcomeScreen: false,
-        initialMessages: ["Hi there! 👋", "How can I help you with Trainual today?"],
+
+        initialMessages: [
+          "Hi there! 👋",
+          "How can I help you with Trainual today?"
+        ],
+
         i18n: {
           en: {
             title: "Trainual Assistant",
-            subtitle: "Ask me anything about onboarding, SOPs, and training.",
-            inputPlaceholder: "Type your question…",
-            getStarted: "New conversation",
-            footer: ""
+            subtitle:
+              "Ask me anything about onboarding, SOPs, and training.",
+            inputPlaceholder: "Type your question…"
           }
         }
       });
