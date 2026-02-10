@@ -1,27 +1,37 @@
-<html lang="en"><head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Trainual Assistant</title>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trainual Agent Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&amp;family=Outfit:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <style>
     :root {
       --purple: #6A28EA;
-      --purple-hover: #5a1fd4;
-      --purple-glow: rgba(106, 40, 234, 0.2);
-      --purple-soft: rgba(106, 40, 234, 0.07);
-      --purple-muted: rgba(106, 40, 234, 0.12);
+      --purple-hover: #7B3FF5;
+      --purple-dark: #5a1fd4;
+      --purple-glow: rgba(106,40,234,0.2);
+      --purple-soft: rgba(106,40,234,0.07);
+      --purple-muted: rgba(106,40,234,0.12);
       --eggplant: #020044;
-      --eggplant-text: rgba(255, 255, 255, 0.5);
-      --eggplant-text-bright: rgba(255, 255, 255, 0.88);
+      --eggplant-card: #0a0a50;
+      --eggplant-card-hover: #10105a;
+      --eggplant-border: rgba(106,40,234,0.12);
+      --eggplant-border-hover: rgba(106,40,234,0.3);
+      --eggplant-text: rgba(255,255,255,0.5);
+      --eggplant-text-bright: rgba(255,255,255,0.88);
       --oatmeal: #F4F1EA;
       --white: #FFFFFF;
       --green: #06D4AE;
       --highlight: #FFF384;
       --blue: #5EB7D8;
       --pink: #F445B6;
+      --text-bright: rgba(255,255,255,0.92);
+      --text-mid: rgba(255,255,255,0.6);
+      --text-dim: rgba(255,255,255,0.35);
       --bg: #F8F7F4;
       --border: #E8E5DD;
       --border-light: #EFECE6;
@@ -34,15 +44,249 @@
     body {
       font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--eggplant);
+      color: var(--text-bright);
       height: 100vh;
       overflow: hidden;
-      color: var(--text);
     }
 
-    .app { display: flex; height: 100vh; animation: appEnter 0.5s ease both; }
-    @keyframes appEnter { from { opacity: 0; } to { opacity: 1; } }
+    /* ════════════════════════════════
+       VIEW SWITCHING
+       ════════════════════════════════ */
+    .view {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
 
-    /* ── SIDEBAR ── */
+    .view.hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.98);
+    }
+
+    .view.visible {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1);
+    }
+
+    /* ════════════════════════════════
+       HUB VIEW
+       ════════════════════════════════ */
+    #hubView {
+      background: var(--eggplant);
+      overflow-y: auto;
+    }
+
+    #hubView::before {
+      content: '';
+      position: fixed; inset: 0;
+      background:
+        radial-gradient(ellipse 50% 40% at 15% 8%, rgba(106,40,234,0.12), transparent),
+        radial-gradient(ellipse 40% 30% at 85% 15%, rgba(6,212,174,0.06), transparent),
+        radial-gradient(ellipse 60% 50% at 50% 100%, rgba(106,40,234,0.08), transparent);
+      pointer-events: none;
+    }
+
+    #hubView::-webkit-scrollbar { width: 6px; }
+    #hubView::-webkit-scrollbar-track { background: transparent; }
+    #hubView::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+
+    .hub-page {
+      position: relative; z-index: 1;
+      max-width: 1200px; margin: 0 auto;
+      padding: 48px 32px 80px;
+    }
+
+    .hub-header {
+      text-align: center; margin-bottom: 56px;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hub-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--purple-soft); border: 1px solid var(--eggplant-border);
+      padding: 6px 16px; border-radius: 100px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+      text-transform: uppercase; color: var(--purple-hover); margin-bottom: 20px;
+    }
+
+    .hub-badge .dot {
+      width: 6px; height: 6px; background: var(--green); border-radius: 50%;
+      box-shadow: 0 0 6px rgba(6,212,174,0.5); animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .hub-header h1 {
+      font-family: 'Outfit', sans-serif; font-size: 40px; font-weight: 800;
+      letter-spacing: -1px; margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff 30%, var(--purple-hover) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+
+    .hub-header p {
+      font-size: 16px; color: var(--text-mid);
+      max-width: 500px; margin: 0 auto; line-height: 1.6;
+    }
+
+    .category { margin-bottom: 40px; animation: fadeUp 0.6s ease both; }
+
+    .category-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .category-icon { font-size: 18px; }
+
+    .category-title {
+      font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-dim);
+    }
+
+    .category-count {
+      margin-left: auto; font-size: 12px; color: var(--text-dim);
+      background: rgba(255,255,255,0.04); padding: 2px 10px; border-radius: 100px;
+    }
+
+    .agent-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px;
+    }
+
+    .agent-card {
+      background: var(--eggplant-card); border: 1px solid var(--eggplant-border);
+      border-radius: 16px; padding: 24px; cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
+      position: relative; overflow: hidden;
+    }
+
+    .agent-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(106,40,234,0.3), transparent);
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+
+    .agent-card:hover {
+      background: var(--eggplant-card-hover); border-color: var(--eggplant-border-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 32px rgba(106,40,234,0.12), 0 0 0 1px rgba(106,40,234,0.1);
+    }
+
+    .agent-card:hover::before { opacity: 1; }
+
+    .agent-card.disabled { cursor: default; opacity: 0.55; }
+    .agent-card.disabled:hover { transform: none; box-shadow: none; background: var(--eggplant-card); border-color: var(--eggplant-border); }
+    .agent-card.disabled:hover::before { opacity: 0; }
+
+    .card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+
+    .agent-avatar {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; flex-shrink: 0;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .card-top-info { flex: 1; min-width: 0; }
+
+    .agent-name {
+      font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;
+      color: var(--text-bright); letter-spacing: -0.3px; margin-bottom: 2px;
+    }
+
+    .agent-role { font-size: 13px; color: var(--text-mid); font-weight: 500; }
+
+    .status-badge {
+      font-size: 11px; font-weight: 600; padding: 4px 10px;
+      border-radius: 100px; letter-spacing: 0.3px;
+    }
+
+    .status-badge.green { background: rgba(6,212,174,0.12); color: var(--green); border: 1px solid rgba(6,212,174,0.2); }
+    .status-badge.purple { background: var(--purple-soft); color: var(--purple-hover); border: 1px solid rgba(106,40,234,0.2); }
+    .status-badge.blue { background: rgba(94,183,216,0.12); color: var(--blue); border: 1px solid rgba(94,183,216,0.2); }
+    .status-badge.yellow { background: rgba(255,243,132,0.1); color: var(--highlight); border: 1px solid rgba(255,243,132,0.15); }
+    .status-badge.pink { background: rgba(244,69,182,0.1); color: var(--pink); border: 1px solid rgba(244,69,182,0.15); }
+
+    .agent-desc { font-size: 13.5px; color: var(--text-mid); line-height: 1.55; margin-bottom: 18px; }
+
+    .agent-capabilities { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+
+    .agent-capabilities li {
+      font-size: 13px; color: var(--text-mid); display: flex; align-items: center; gap: 8px; line-height: 1.4;
+    }
+
+    .agent-capabilities li::before {
+      content: ''; width: 4px; height: 4px; border-radius: 50%;
+      background: var(--purple); flex-shrink: 0; opacity: 0.6;
+    }
+
+    .card-footer {
+      display: flex; align-items: center; gap: 10px;
+      padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .chat-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px; background: var(--purple); color: white; border: none;
+      border-radius: 10px; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(106,40,234,0.25);
+    }
+
+    .chat-btn:hover { background: var(--purple-hover); box-shadow: 0 4px 16px rgba(106,40,234,0.4); transform: translateY(-1px); }
+
+    .chat-btn svg {
+      width: 14px; height: 14px; stroke: currentColor; fill: none;
+      stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .chat-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+    .chat-btn:disabled:hover { background: var(--purple); transform: none; }
+
+    .card-meta { margin-left: auto; font-size: 11px; color: var(--text-dim); }
+
+    /* Pipeline */
+    .pipeline {
+      margin-top: 56px; padding: 32px;
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 18px; animation: fadeUp 0.6s ease 0.4s both;
+    }
+
+    .pipeline-label {
+      font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-dim); margin-bottom: 20px;
+    }
+
+    .pipeline-flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
+
+    .pipeline-node {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--eggplant-card); border: 1px solid var(--eggplant-border);
+      padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      color: var(--text-bright); white-space: nowrap;
+    }
+
+    .pipeline-arrow { color: var(--text-dim); font-size: 14px; padding: 0 2px; }
+
+    .pipeline-steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
+    .pipeline-step { font-size: 11px; color: var(--text-dim); }
+    .pipeline-step-arrow { font-size: 11px; color: var(--text-dim); opacity: 0.5; }
+
+    /* ════════════════════════════════
+       CHAT VIEW
+       ════════════════════════════════ */
+    #chatView {
+      display: flex;
+      background: var(--white);
+    }
+
+    /* Sidebar */
     .sidebar {
       width: 280px;
       background: var(--eggplant);
@@ -60,7 +304,8 @@
     .sidebar > * { position: relative; z-index: 1; }
 
     .sidebar-header { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .sidebar-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
 
     .sidebar-logo {
       width: 34px; height: 34px; background: var(--purple); border-radius: 10px;
@@ -74,6 +319,22 @@
       color: var(--eggplant-text-bright); letter-spacing: -0.3px;
     }
 
+    .back-btn {
+      width: 100%; padding: 10px 14px; margin-bottom: 10px;
+      background: none; border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 10px; color: var(--eggplant-text);
+      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .back-btn:hover { background: rgba(255,255,255,0.05); color: var(--eggplant-text-bright); }
+
+    .back-btn svg {
+      width: 14px; height: 14px; stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
     .new-chat-btn {
       width: 100%; padding: 11px 14px;
       background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
@@ -83,7 +344,11 @@
     }
 
     .new-chat-btn:hover { background: rgba(106,40,234,0.15); border-color: rgba(106,40,234,0.25); }
-    .new-chat-btn svg { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; }
+
+    .new-chat-btn svg {
+      width: 16px; height: 16px; stroke: currentColor; fill: none;
+      stroke-width: 2; stroke-linecap: round;
+    }
 
     .new-chat-btn .shortcut {
       margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
@@ -119,7 +384,11 @@
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
     }
 
-    .session-icon svg { width: 14px; height: 14px; stroke: var(--eggplant-text); fill: none; stroke-width: 2; stroke-linecap: round; }
+    .session-icon svg {
+      width: 14px; height: 14px; stroke: var(--eggplant-text); fill: none;
+      stroke-width: 2; stroke-linecap: round;
+    }
+
     .session-item.active .session-icon { background: rgba(106,40,234,0.2); }
     .session-item.active .session-icon svg { stroke: rgba(106,40,234,0.8); }
 
@@ -138,7 +407,11 @@
       transition: all 0.15s; display: flex; align-items: center; justify-content: center;
     }
 
-    .session-delete svg { width: 14px; height: 14px; stroke: var(--eggplant-text); fill: none; stroke-width: 2; stroke-linecap: round; }
+    .session-delete svg {
+      width: 14px; height: 14px; stroke: var(--eggplant-text); fill: none;
+      stroke-width: 2; stroke-linecap: round;
+    }
+
     .session-item:hover .session-delete { opacity: 1; }
     .session-delete:hover { background: rgba(244,69,182,0.2); }
     .session-delete:hover svg { stroke: var(--pink); }
@@ -154,10 +427,11 @@
       animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(6,212,174,0.4);
     }
 
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-    /* ── MAIN ── */
-    .main { flex: 1; display: flex; flex-direction: column; background: var(--white); min-width: 0; }
+    /* Main chat area */
+    .chat-main {
+      flex: 1; display: flex; flex-direction: column;
+      background: var(--white); min-width: 0;
+    }
 
     .topbar {
       height: 60px; border-bottom: 1px solid var(--border-light);
@@ -165,21 +439,36 @@
       background: var(--white); flex-shrink: 0;
     }
 
+    .topbar-agent {
+      display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
+    }
+
+    .topbar-agent-emoji { font-size: 20px; }
+
+    .topbar-agent-info { min-width: 0; }
+
     .topbar-title {
       font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 15px;
-      color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+
+    .topbar-role { font-size: 12px; color: var(--text-secondary); }
 
     .topbar-session-id {
       font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);
       background: var(--oatmeal); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     .sidebar-toggle {
       display: none; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px;
     }
 
-    .sidebar-toggle svg { width: 20px; height: 20px; stroke: var(--text-secondary); fill: none; stroke-width: 2; stroke-linecap: round; }
+    .sidebar-toggle svg {
+      width: 20px; height: 20px; stroke: var(--text-secondary); fill: none;
+      stroke-width: 2; stroke-linecap: round;
+    }
+
     .sidebar-toggle:hover { background: var(--oatmeal); }
 
     .messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; background: var(--bg); }
@@ -197,15 +486,12 @@
       padding: 80px 32px 40px; animation: fadeUp 0.5s ease both;
     }
 
-    @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-
     .welcome-icon {
       width: 68px; height: 68px;
       background: linear-gradient(135deg, var(--purple-soft), var(--purple-muted));
-      border-radius: 22px; display: flex; align-items: center; justify-content: center; margin-bottom: 24px;
+      border-radius: 22px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 24px; font-size: 32px;
     }
-
-    .welcome-icon svg { width: 28px; height: 28px; stroke: var(--purple); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 
     .welcome h2 {
       font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 700;
@@ -233,7 +519,10 @@
       white-space: pre-wrap; word-wrap: break-word;
     }
 
-    @keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes msgIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
 
     .bot {
       background: var(--white); border: 1px solid var(--border-light); color: var(--text);
@@ -288,17 +577,32 @@
       transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(106,40,234,0.25);
     }
 
-    .send-btn:hover { background: var(--purple-hover); box-shadow: 0 4px 20px rgba(106,40,234,0.35); transform: translateY(-1px); }
+    .send-btn:hover { background: var(--purple-dark); box-shadow: 0 4px 20px rgba(106,40,234,0.35); transform: translateY(-1px); }
     .send-btn:active { transform: scale(0.95) translateY(0); }
     .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-    .send-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .send-btn svg {
+      width: 18px; height: 18px; fill: none; stroke: currentColor;
+      stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    }
 
     .input-hint { text-align: center; font-size: 11px; color: var(--text-secondary); opacity: 0.45; margin-top: 10px; }
 
+    /* ── Responsive ── */
     @media (max-width: 768px) {
-      .sidebar { position: fixed; left: -280px; top: 0; height: 100vh; z-index: 100; transition: left 0.3s cubic-bezier(0.16,1,0.3,1); }
+      .hub-page { padding: 32px 16px 60px; }
+      .hub-header h1 { font-size: 28px; }
+      .agent-grid { grid-template-columns: 1fr; }
+
+      .sidebar {
+        position: fixed; left: -280px; top: 0; height: 100vh; z-index: 100;
+        transition: left 0.3s cubic-bezier(0.16,1,0.3,1);
+      }
       .sidebar.open { left: 0; }
-      .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(2,0,68,0.5); backdrop-filter: blur(4px); z-index: 99; }
+      .sidebar-overlay {
+        display: none; position: fixed; inset: 0;
+        background: rgba(2,0,68,0.5); backdrop-filter: blur(4px); z-index: 99;
+      }
       .sidebar.open ~ .sidebar-overlay { display: block; }
       .sidebar-toggle { display: flex; }
       .messages-inner, .input-area { padding-left: 16px; padding-right: 16px; }
@@ -307,81 +611,213 @@
 </head>
 
 <body>
-  <div class="app">
+
+  <!-- ════════ HUB VIEW ════════ -->
+  <div id="hubView" class="view visible">
+    <div class="hub-page">
+      <div class="hub-header">
+        <div class="hub-badge"><span class="dot"></span> All Systems Online</div>
+        <h1>Trainual Agent Hub</h1>
+        <p>Your AI-powered team for onboarding, training, and process management. Select an agent to start a conversation.</p>
+      </div>
+      <div id="hubCategories"></div>
+      <div id="hubPipeline"></div>
+    </div>
+  </div>
+
+  <!-- ════════ CHAT VIEW ════════ -->
+  <div id="chatView" class="view hidden">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <div class="sidebar-brand">
           <div class="sidebar-logo">T</div>
-          <span class="sidebar-brand-text">Trainual Assistant</span>
+          <span class="sidebar-brand-text">Trainual</span>
         </div>
-        <button class="new-chat-btn" id="newChatBtn" title="Start a new conversation">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+        <button class="back-btn" id="backBtn">
+          <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          All Agents
+        </button>
+        <button class="new-chat-btn" id="newChatBtn">
+          <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
           New chat
-          <span class="shortcut">⌘N</span>
+          <span class="shortcut">&#8984;N</span>
         </button>
       </div>
-      <div class="session-list" id="sessionList"><div style="padding:24px 8px;text-align:center"><p style="font-size:12px;color:var(--eggplant-text);line-height:1.5">No conversations yet.<br>Start a new chat to begin.</p></div></div>
+      <div class="session-list" id="sessionList"></div>
       <div class="sidebar-footer">
         <div class="sidebar-footer-text">
-          <span class="dot"></span>
-          Connected to Trainual
+          <span class="dot"></span> Connected to Trainual
         </div>
       </div>
     </aside>
 
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <main class="main">
+    <main class="chat-main">
       <div class="topbar">
         <button class="sidebar-toggle" id="sidebarToggle">
-          <svg viewBox="0 0 24 24"><path d="M3 12h18"></path><path d="M3 6h18"></path><path d="M3 18h18"></path></svg>
+          <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>
         </button>
-        <div class="topbar-title" id="topbarTitle">New conversation</div>
+        <div class="topbar-agent">
+          <span class="topbar-agent-emoji" id="topbarEmoji"></span>
+          <div class="topbar-agent-info">
+            <div class="topbar-title" id="topbarTitle">New conversation</div>
+            <div class="topbar-role" id="topbarRole"></div>
+          </div>
+        </div>
         <div class="topbar-session-id" id="topbarSessionId"></div>
       </div>
 
       <div class="messages" id="messages">
-        <div class="messages-inner" id="messagesInner"><div class="welcome" id="welcome"><div class="welcome-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="var(--purple)" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><h2>How can I help?</h2><p>Ask me anything about onboarding, SOPs, training processes, and company procedures.</p><div class="welcome-chips"><div class="welcome-chip" data-q="How do I onboard a new employee?">Onboarding steps</div><div class="welcome-chip" data-q="What SOPs do we have?">Browse SOPs</div><div class="welcome-chip" data-q="How do I create a new training?">Create training</div><div class="welcome-chip" data-q="Show me our company policies">Company policies</div></div></div></div>
+        <div class="messages-inner" id="messagesInner"></div>
       </div>
 
       <div class="input-area">
         <div class="input-container">
-          <textarea id="input" placeholder="Ask Trainual anything..." rows="1"></textarea>
+          <textarea id="input" placeholder="Ask a question..." rows="1"></textarea>
           <button class="send-btn" id="sendBtn">
-            <svg viewBox="0 0 24 24"><path d="M22 2L11 13"></path><path d="M22 2L15 22L11 13L2 9L22 2Z"></path></svg>
+            <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
           </button>
         </div>
-        <div class="input-hint">Enter to send · Shift+Enter for new line</div>
+        <div class="input-hint">Enter to send &middot; Shift+Enter for new line</div>
       </div>
     </main>
   </div>
 
   <script>
-    const WEBHOOK_URL = "https://trainual.app.n8n.cloud/webhook/3d55d6c4-dd85-4160-99be-df6c47a7c27c/chat";
-    const STORAGE_KEY = "trainual_sessions";
+    // ═══════════════════════════════════════
+    // AGENT CONFIG — all in one place
+    // ═══════════════════════════════════════
+    var AGENTS = [
+      {
+        category: "Onboarding & Training", categoryIcon: "\uD83D\uDCCB",
+        agents: [
+          { id: "scout", name: "Scout", emoji: "\uD83D\uDD0D", role: "Onboarding Guide", desc: "Walks new hires through their first 90 days with personalized onboarding paths.", capabilities: ["Step-by-step onboarding flows", "Role-specific training paths", "Progress tracking & check-ins"], frequency: "Always on", badgeColor: "green", webhook: "https://trainual.app.n8n.cloud/webhook/3d55d6c4-dd85-4160-99be-df6c47a7c27c/chat", chips: ["How do I onboard a new employee?", "What SOPs do we have?", "Show me our company policies", "How do I create a new training?"] },
+          { id: "sage", name: "Sage", emoji: "\uD83D\uDCDA", role: "Knowledge Base Expert", desc: "Instantly finds and explains any SOP, policy, or training document.", capabilities: ["Full Trainual content search", "Plain-language explanations", "Source linking & citations"], frequency: "Always on", badgeColor: "green", webhook: "", chips: [] },
+          { id: "coach", name: "Coach", emoji: "\uD83C\uDFAF", role: "Training Assessor", desc: "Creates quizzes and assessments to verify training completion and comprehension.", capabilities: ["Auto-generated assessments", "Competency scoring", "Knowledge gap reports"], frequency: "On demand", badgeColor: "purple", webhook: "", chips: [] }
+        ]
+      },
+      {
+        category: "Process & Compliance", categoryIcon: "\u2699\uFE0F",
+        agents: [
+          { id: "warden", name: "Warden", emoji: "\uD83D\uDEE1\uFE0F", role: "Compliance Monitor", desc: "Tracks training completion rates and flags compliance gaps across teams.", capabilities: ["Completion rate dashboards", "Overdue training alerts", "Compliance audit reports"], frequency: "Daily", badgeColor: "blue", webhook: "", chips: [] },
+          { id: "quill", name: "Quill", emoji: "\u270D\uFE0F", role: "SOP Writer", desc: "Helps draft, refine, and format standard operating procedures from scratch.", capabilities: ["SOP drafting from prompts", "Brand voice adherence", "Template formatting"], frequency: "On demand", badgeColor: "purple", webhook: "", chips: [] },
+          { id: "prism", name: "Prism", emoji: "\uD83D\uDCCA", role: "Analytics Reporter", desc: "Generates training analytics, engagement metrics, and team progress reports.", capabilities: ["Weekly engagement reports", "Team progress breakdowns", "Trend analysis & insights"], frequency: "Weekly", badgeColor: "yellow", webhook: "", chips: [] }
+        ]
+      },
+      {
+        category: "Support & Operations", categoryIcon: "\uD83D\uDE80",
+        agents: [
+          { id: "herald", name: "Herald", emoji: "\uD83D\uDCE3", role: "Update Broadcaster", desc: "Drafts and distributes announcements when SOPs or policies are updated.", capabilities: ["Change summary generation", "Multi-channel distribution", "Acknowledgment tracking"], frequency: "On change", badgeColor: "pink", webhook: "", chips: [] },
+          { id: "morgan", name: "Morgan", emoji: "\uD83D\uDDC2\uFE0F", role: "Process Manager", desc: "Keeps your Trainual content organized, identifies gaps, and suggests improvements.", capabilities: ["Content health audits", "Gap identification", "Structure recommendations"], frequency: "Bi-weekly", badgeColor: "blue", webhook: "", chips: [] },
+          { id: "ember", name: "Ember", emoji: "\uD83D\uDCAC", role: "Employee Assistant", desc: "General-purpose helper that answers any question about company processes and culture.", capabilities: ["Natural Q&A interface", "Role-aware responses", "Escalation to managers"], frequency: "Always on", badgeColor: "green", webhook: "", chips: [] }
+        ]
+      }
+    ];
 
-    let sessions = loadSessions();
-    let activeSessionId = null;
-    let isSending = false;
+    var PIPELINE = {
+      label: "Onboarding Pipeline Flow",
+      nodes: [ { emoji: "\uD83D\uDD0D", name: "Scout" }, { emoji: "\uD83D\uDCDA", name: "Sage" }, { emoji: "\uD83C\uDFAF", name: "Coach" }, { emoji: "\uD83D\uDEE1\uFE0F", name: "Warden" }, { emoji: "\uD83D\uDCE3", name: "Herald" } ],
+      steps: ["Welcome", "Learn SOPs", "Assess", "Verify Compliance", "Announce"]
+    };
 
-    const messagesEl = document.getElementById("messages");
-    const messagesInner = document.getElementById("messagesInner");
-    const inputEl = document.getElementById("input");
-    const sendBtn = document.getElementById("sendBtn");
-    const sessionListEl = document.getElementById("sessionList");
-    const topbarTitle = document.getElementById("topbarTitle");
-    const topbarSessionId = document.getElementById("topbarSessionId");
-    const newChatBtn = document.getElementById("newChatBtn");
-    const sidebar = document.getElementById("sidebar");
-    const sidebarToggle = document.getElementById("sidebarToggle");
-    const sidebarOverlay = document.getElementById("sidebarOverlay");
+    // ═══════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════
+    var STORAGE_KEY = "trainual_sessions";
+    var currentAgent = null;
+    var sessions = [];
+    var activeSessionId = null;
+    var isSending = false;
+
+    // Flatten agents for lookup
+    var agentMap = {};
+    AGENTS.forEach(function(cat) {
+      cat.agents.forEach(function(a) { agentMap[a.id] = a; });
+    });
+
+    // ═══════════════════════════════════════
+    // DOM
+    // ═══════════════════════════════════════
+    var hubView = document.getElementById('hubView');
+    var chatView = document.getElementById('chatView');
+    var messagesEl = document.getElementById('messages');
+    var messagesInner = document.getElementById('messagesInner');
+    var inputEl = document.getElementById('input');
+    var sendBtn = document.getElementById('sendBtn');
+    var sessionListEl = document.getElementById('sessionList');
+    var topbarTitle = document.getElementById('topbarTitle');
+    var topbarRole = document.getElementById('topbarRole');
+    var topbarEmoji = document.getElementById('topbarEmoji');
+    var topbarSessionId = document.getElementById('topbarSessionId');
+    var newChatBtn = document.getElementById('newChatBtn');
+    var backBtn = document.getElementById('backBtn');
+    var sidebar = document.getElementById('sidebar');
+    var sidebarToggle = document.getElementById('sidebarToggle');
+    var sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    // ═══════════════════════════════════════
+    // VIEW SWITCHING
+    // ═══════════════════════════════════════
+    function showHub() {
+      chatView.classList.remove('visible');
+      chatView.classList.add('hidden');
+      hubView.classList.remove('hidden');
+      hubView.classList.add('visible');
+      currentAgent = null;
+      document.title = 'Trainual Agent Hub';
+    }
+
+    function showChat(agentId) {
+      var agent = agentMap[agentId];
+      if (!agent || !agent.webhook) return;
+
+      currentAgent = agent;
+      document.title = agent.name + ' — Trainual';
+      inputEl.placeholder = 'Ask ' + agent.name + ' anything...';
+
+      // Load sessions for this agent
+      sessions = loadSessions(agent.id);
+      activeSessionId = null;
+
+      // Update topbar
+      topbarEmoji.textContent = agent.emoji;
+      topbarRole.textContent = agent.role;
+
+      hubView.classList.remove('visible');
+      hubView.classList.add('hidden');
+      chatView.classList.remove('hidden');
+      chatView.classList.add('visible');
+
+      renderSessionList();
+      if (sessions.length > 0) {
+        switchToSession(sessions[0].id);
+      } else {
+        renderEmptyState();
+      }
+
+      inputEl.focus();
+    }
+
+    // ═══════════════════════════════════════
+    // SESSION MANAGEMENT (per-agent)
+    // ═══════════════════════════════════════
+    function storageKey(agentId) { return STORAGE_KEY + '_' + agentId; }
 
     function generateId() { return 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
-    function loadSessions() { try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; } catch { return []; } }
-    function saveSessions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); }
+
+    function loadSessions(agentId) {
+      try { return JSON.parse(localStorage.getItem(storageKey(agentId))) || []; }
+      catch (e) { return []; }
+    }
+
+    function saveSessions() {
+      if (!currentAgent) return;
+      localStorage.setItem(storageKey(currentAgent.id), JSON.stringify(sessions));
+    }
 
     function createSession() {
-      const session = { id: generateId(), title: "New conversation", messages: [], createdAt: Date.now(), updatedAt: Date.now() };
+      var session = { id: generateId(), title: "New conversation", messages: [], createdAt: Date.now(), updatedAt: Date.now() };
       sessions.unshift(session);
       saveSessions();
       switchToSession(session.id);
@@ -390,7 +826,7 @@
 
     function deleteSession(id, e) {
       e.stopPropagation();
-      sessions = sessions.filter(s => s.id !== id);
+      sessions = sessions.filter(function(s) { return s.id !== id; });
       saveSessions();
       if (activeSessionId === id) {
         if (sessions.length > 0) switchToSession(sessions[0].id);
@@ -401,38 +837,55 @@
 
     function switchToSession(id) {
       activeSessionId = id;
-      const session = sessions.find(s => s.id === id);
+      var session = sessions.find(function(s) { return s.id === id; });
       if (!session) return;
-      topbarTitle.textContent = session.title;
+      topbarTitle.textContent = session.title === 'New conversation' ? currentAgent.name : session.title;
       topbarSessionId.textContent = session.id;
       renderMessages(session);
       renderSessionList();
       closeSidebar();
     }
 
-    function getActiveSession() { return sessions.find(s => s.id === activeSessionId); }
+    function getActiveSession() {
+      return sessions.find(function(s) { return s.id === activeSessionId; });
+    }
 
     function updateSessionTitle(session) {
-      const first = session.messages.find(m => m.type === 'user');
+      var first = session.messages.find(function(m) { return m.type === 'user'; });
       if (first) {
         session.title = first.text.length > 40 ? first.text.slice(0, 40) + '\u2026' : first.text;
         topbarTitle.textContent = session.title;
       }
     }
 
+    // ═══════════════════════════════════════
+    // RENDERING — Chat
+    // ═══════════════════════════════════════
+    function escapeHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+
     function renderEmptyState() {
-      topbarTitle.textContent = "New conversation";
-      topbarSessionId.textContent = "";
+      topbarTitle.textContent = currentAgent.name;
+      topbarSessionId.textContent = '';
       messagesInner.innerHTML = '';
       messagesInner.appendChild(createWelcome());
     }
 
     function createWelcome() {
-      const div = document.createElement('div');
+      var agent = currentAgent;
+      var div = document.createElement('div');
       div.className = 'welcome'; div.id = 'welcome';
-      div.innerHTML = '<div class="welcome-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="var(--purple)" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div><h2>How can I help?</h2><p>Ask me anything about onboarding, SOPs, training processes, and company procedures.</p><div class="welcome-chips"><div class="welcome-chip" data-q="How do I onboard a new employee?">Onboarding steps</div><div class="welcome-chip" data-q="What SOPs do we have?">Browse SOPs</div><div class="welcome-chip" data-q="How do I create a new training?">Create training</div><div class="welcome-chip" data-q="Show me our company policies">Company policies</div></div>';
-      div.querySelectorAll('.welcome-chip').forEach(chip => {
-        chip.addEventListener('click', () => { inputEl.value = chip.dataset.q; sendMessage(); });
+
+      var chipsHtml = '';
+      if (agent.chips && agent.chips.length) {
+        chipsHtml = '<div class="welcome-chips">' + agent.chips.map(function(c) {
+          return '<div class="welcome-chip" data-q="' + escapeHtml(c) + '">' + escapeHtml(c) + '</div>';
+        }).join('') + '</div>';
+      }
+
+      div.innerHTML = '<div class="welcome-icon">' + agent.emoji + '</div><h2>' + escapeHtml(agent.name) + '</h2><p>' + escapeHtml(agent.desc) + '</p>' + chipsHtml;
+
+      div.querySelectorAll('.welcome-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() { inputEl.value = chip.dataset.q; sendMessage(); });
       });
       return div;
     }
@@ -440,14 +893,15 @@
     function renderMessages(session) {
       messagesInner.innerHTML = '';
       if (session.messages.length === 0) messagesInner.appendChild(createWelcome());
-      else session.messages.forEach(msg => addMessageBubble(msg.text, msg.type, false));
+      else session.messages.forEach(function(msg) { addMessageBubble(msg.text, msg.type, false); });
       scrollToBottom();
     }
 
-    function addMessageBubble(text, type, animate = true) {
-      const welcome = document.getElementById('welcome');
+    function addMessageBubble(text, type, animate) {
+      if (animate === undefined) animate = true;
+      var welcome = document.getElementById('welcome');
       if (welcome) welcome.remove();
-      const div = document.createElement('div');
+      var div = document.createElement('div');
       div.className = 'message ' + type;
       if (!animate) div.style.animation = 'none';
       div.textContent = text;
@@ -456,24 +910,25 @@
     }
 
     function showTyping() {
-      const div = document.createElement('div');
+      var div = document.createElement('div');
       div.className = 'message bot typing-indicator'; div.id = 'typing';
       div.innerHTML = '<span></span><span></span><span></span>';
       messagesInner.appendChild(div); scrollToBottom();
     }
 
-    function removeTyping() { const el = document.getElementById('typing'); if (el) el.remove(); }
+    function removeTyping() { var el = document.getElementById('typing'); if (el) el.remove(); }
     function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
 
+    // Session list
     function renderSessionList() {
       sessionListEl.innerHTML = '';
       if (sessions.length === 0) {
         sessionListEl.innerHTML = '<div style="padding:24px 8px;text-align:center"><p style="font-size:12px;color:var(--eggplant-text);line-height:1.5">No conversations yet.<br>Start a new chat to begin.</p></div>';
         return;
       }
-      const now = Date.now(), today = [], yesterday = [], older = [];
-      sessions.forEach(s => {
-        const age = now - s.updatedAt;
+      var now = Date.now(), today = [], yesterday = [], older = [];
+      sessions.forEach(function(s) {
+        var age = now - s.updatedAt;
         if (age < 86400000) today.push(s);
         else if (age < 172800000) yesterday.push(s);
         else older.push(s);
@@ -484,47 +939,46 @@
     }
 
     function renderGroup(label, items) {
-      const gl = document.createElement('div'); gl.className = 'session-group-label'; gl.textContent = label;
+      var gl = document.createElement('div'); gl.className = 'session-group-label'; gl.textContent = label;
       sessionListEl.appendChild(gl);
-      items.forEach(s => {
-        const item = document.createElement('div');
+      items.forEach(function(s) {
+        var item = document.createElement('div');
         item.className = 'session-item' + (s.id === activeSessionId ? ' active' : '');
         item.innerHTML = '<div class="session-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="session-info"><div class="session-title">' + escapeHtml(s.title) + '</div><div class="session-time">' + s.messages.length + ' message' + (s.messages.length !== 1 ? 's' : '') + '</div></div>';
-        const del = document.createElement('button'); del.className = 'session-delete'; del.title = 'Delete conversation';
+        var del = document.createElement('button'); del.className = 'session-delete'; del.title = 'Delete';
         del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
-        del.addEventListener('click', (e) => deleteSession(s.id, e));
+        del.addEventListener('click', function(e) { deleteSession(s.id, e); });
         item.appendChild(del);
-        item.addEventListener('click', () => switchToSession(s.id));
+        item.addEventListener('click', function() { switchToSession(s.id); });
         sessionListEl.appendChild(item);
       });
     }
 
-    function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-
-    async function sendMessage() {
-      const text = inputEl.value.trim();
-      if (!text || isSending) return;
+    // ═══════════════════════════════════════
+    // SENDING
+    // ═══════════════════════════════════════
+    function sendMessage() {
+      var text = inputEl.value.trim();
+      if (!text || isSending || !currentAgent) return;
       if (!activeSessionId) createSession();
-      const session = getActiveSession();
+      var session = getActiveSession();
       if (!session) return;
 
       isSending = true; sendBtn.disabled = true;
 
-      session.messages.push({ text, type: 'user' });
+      session.messages.push({ text: text, type: 'user' });
       session.updatedAt = Date.now();
       updateSessionTitle(session); saveSessions(); renderSessionList();
       addMessageBubble(text, 'user');
       inputEl.value = ''; inputEl.style.height = '24px';
       showTyping();
 
-      try {
-        const res = await fetch(WEBHOOK_URL, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatInput: text, sessionId: session.id })
-        });
-        const data = await res.json(); removeTyping();
-
-        let botMessages = [];
+      fetch(currentAgent.webhook, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatInput: text, sessionId: session.id, agent: currentAgent.id })
+      }).then(function(res) { return res.json(); }).then(function(data) {
+        removeTyping();
+        var botMessages = [];
         if (data && data.messages && data.messages.length) botMessages = data.messages.map(function(m) { return m.text; });
         else if (Array.isArray(data)) botMessages = data.map(function(m) { return m.output || m.text; }).filter(Boolean);
         else if (data && data.output) botMessages = [data.output];
@@ -536,18 +990,74 @@
             addMessageBubble(t, 'bot');
           }, i * 120);
         });
-      } catch (err) {
+      }).catch(function() {
         removeTyping();
         var errText = "Sorry, something went wrong. Please try again.";
         session.messages.push({ text: errText, type: 'bot' }); saveSessions();
         addMessageBubble(errText, 'bot');
-      } finally {
+      }).finally(function() {
         isSending = false; sendBtn.disabled = false;
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // RENDERING — Hub
+    // ═══════════════════════════════════════
+    function renderHub() {
+      var container = document.getElementById('hubCategories');
+      AGENTS.forEach(function(cat, ci) {
+        var section = document.createElement('div');
+        section.className = 'category';
+        section.style.animationDelay = (ci * 0.1) + 's';
+        section.innerHTML = '<div class="category-header"><span class="category-icon">' + cat.categoryIcon + '</span><span class="category-title">' + escapeHtml(cat.category) + '</span><span class="category-count">' + cat.agents.length + ' agent' + (cat.agents.length !== 1 ? 's' : '') + '</span></div>';
+
+        var grid = document.createElement('div'); grid.className = 'agent-grid';
+
+        cat.agents.forEach(function(agent, ai) {
+          var isActive = agent.webhook !== '';
+          var card = document.createElement('div');
+          card.className = 'agent-card' + (!isActive ? ' disabled' : '');
+          card.style.animation = 'fadeUp 0.5s ease both';
+          card.style.animationDelay = ((ci * 0.1) + (ai * 0.06)) + 's';
+
+          var capsList = agent.capabilities.map(function(c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('');
+
+          card.innerHTML = '<div class="card-top"><div class="agent-avatar">' + agent.emoji + '</div><div class="card-top-info"><div class="agent-name">' + escapeHtml(agent.name) + '</div><div class="agent-role">' + escapeHtml(agent.role) + '</div></div><div class="agent-status"><span class="status-badge ' + agent.badgeColor + '">' + escapeHtml(agent.frequency) + '</span></div></div><div class="agent-desc">' + escapeHtml(agent.desc) + '</div><ul class="agent-capabilities">' + capsList + '</ul><div class="card-footer"><button class="chat-btn"' + (!isActive ? ' disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>' + (isActive ? 'Chat now' : 'Coming soon') + '</button><span class="card-meta">' + (isActive ? 'Ready' : 'In development') + '</span></div>';
+
+          if (isActive) {
+            card.addEventListener('click', function() { showChat(agent.id); });
+          }
+
+          grid.appendChild(card);
+        });
+
+        section.appendChild(grid);
+        container.appendChild(section);
+      });
+
+      // Pipeline
+      if (PIPELINE) {
+        var pc = document.getElementById('hubPipeline');
+        var nodesHtml = PIPELINE.nodes.map(function(n, i) {
+          var html = '<span class="pipeline-node">' + n.emoji + ' ' + escapeHtml(n.name) + '</span>';
+          if (i < PIPELINE.nodes.length - 1) html += '<span class="pipeline-arrow">&rarr;</span>';
+          return html;
+        }).join('');
+        var stepsHtml = PIPELINE.steps.map(function(s, i) {
+          var html = '<span class="pipeline-step">' + escapeHtml(s) + '</span>';
+          if (i < PIPELINE.steps.length - 1) html += '<span class="pipeline-step-arrow">&rarr;</span>';
+          return html;
+        }).join('');
+        pc.innerHTML = '<div class="pipeline"><div class="pipeline-label">' + escapeHtml(PIPELINE.label) + '</div><div class="pipeline-flow">' + nodesHtml + '</div><div class="pipeline-steps">' + stepsHtml + '</div></div>';
       }
     }
 
+    // ═══════════════════════════════════════
+    // EVENTS
+    // ═══════════════════════════════════════
     function closeSidebar() { sidebar.classList.remove('open'); }
 
+    backBtn.addEventListener('click', showHub);
     sidebarToggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
     sidebarOverlay.addEventListener('click', closeSidebar);
     sendBtn.addEventListener('click', sendMessage);
@@ -564,20 +1074,14 @@
     newChatBtn.addEventListener('click', function() { createSession(); renderSessionList(); inputEl.focus(); });
 
     document.addEventListener('keydown', function(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); createSession(); inputEl.focus(); }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n' && currentAgent) { e.preventDefault(); createSession(); inputEl.focus(); }
+      if (e.key === 'Escape' && currentAgent) showHub();
     });
 
-    document.querySelectorAll('.welcome-chip').forEach(function(chip) {
-      chip.addEventListener('click', function() { inputEl.value = chip.dataset.q; sendMessage(); });
-    });
-
-    // Init
-    (function init() {
-      renderSessionList();
-      if (sessions.length > 0) switchToSession(sessions[0].id);
-      else renderEmptyState();
-    })();
+    // ═══════════════════════════════════════
+    // INIT
+    // ═══════════════════════════════════════
+    renderHub();
   </script>
-
-
-</body></html>
+</body>
+</html>
