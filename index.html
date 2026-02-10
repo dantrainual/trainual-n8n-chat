@@ -70,14 +70,13 @@
   </head>
 
   <body>
-    <div id="n8n-chat"></div>
 
     <script type="module">
       import { createChat } from "https://cdn.jsdelivr.net/npm/@n8n/chat/dist/chat.bundle.es.js";
 
       createChat({
         target: "#n8n-chat",
-        mode: "window",
+        mode: "fullscreen",
 
         webhookUrl:
           "https://trainual.app.n8n.cloud/webhook/d0b07f53-cca1-4e28-8ec0-2146ae550a8c",
