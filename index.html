@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 
   <style>
     :root {
@@ -516,8 +517,10 @@
     .message {
       max-width: 85%; padding: 14px 18px; line-height: 1.6; font-size: 14.5px;
       animation: msgIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
-      white-space: pre-wrap; word-wrap: break-word;
+      word-wrap: break-word; position: relative;
     }
+
+    .message.user { white-space: pre-wrap; }
 
     @keyframes msgIn {
       from { opacity: 0; transform: translateY(6px); }
@@ -533,6 +536,98 @@
       background: var(--eggplant); color: var(--white);
       border-radius: 18px 4px 18px 18px; align-self: flex-end; box-shadow: 0 4px 16px rgba(2,0,68,0.15);
     }
+
+    /* ── Markdown content in bot messages ── */
+    .bot .md-content p { margin: 0 0 10px; }
+    .bot .md-content p:last-child { margin-bottom: 0; }
+    .bot .md-content strong { font-weight: 600; color: var(--eggplant); }
+    .bot .md-content em { font-style: italic; }
+
+    .bot .md-content h1, .bot .md-content h2, .bot .md-content h3 {
+      font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--eggplant);
+      margin: 16px 0 8px; letter-spacing: -0.3px;
+    }
+
+    .bot .md-content h1 { font-size: 18px; }
+    .bot .md-content h2 { font-size: 16px; }
+    .bot .md-content h3 { font-size: 14.5px; }
+    .bot .md-content h1:first-child, .bot .md-content h2:first-child, .bot .md-content h3:first-child { margin-top: 0; }
+
+    .bot .md-content ul, .bot .md-content ol {
+      margin: 8px 0; padding-left: 20px;
+    }
+
+    .bot .md-content li { margin-bottom: 4px; }
+    .bot .md-content li::marker { color: var(--purple); }
+
+    .bot .md-content code {
+      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
+      background: var(--oatmeal); padding: 2px 6px; border-radius: 5px;
+      border: 1px solid var(--border);
+    }
+
+    .bot .md-content pre {
+      background: var(--eggplant); color: var(--eggplant-text-bright);
+      padding: 14px 16px; border-radius: 10px; margin: 10px 0;
+      overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+    }
+
+    .bot .md-content pre code {
+      background: none; padding: 0; border: none; border-radius: 0;
+      color: inherit; font-size: inherit;
+    }
+
+    .bot .md-content a {
+      color: var(--purple); text-decoration: none; font-weight: 500;
+      border-bottom: 1px solid rgba(106,40,234,0.3); transition: border-color 0.15s;
+    }
+
+    .bot .md-content a:hover { border-color: var(--purple); }
+
+    .bot .md-content blockquote {
+      border-left: 3px solid var(--purple-muted); padding-left: 14px;
+      margin: 10px 0; color: var(--text-secondary); font-style: italic;
+    }
+
+    .bot .md-content hr {
+      border: none; border-top: 1px solid var(--border); margin: 14px 0;
+    }
+
+    .bot .md-content table {
+      width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px;
+    }
+
+    .bot .md-content th, .bot .md-content td {
+      padding: 8px 10px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .bot .md-content th {
+      font-weight: 600; color: var(--eggplant);
+      background: var(--oatmeal); font-size: 12px;
+      text-transform: uppercase; letter-spacing: 0.3px;
+    }
+
+    /* ── Copy button ── */
+    .msg-wrapper { position: relative; align-self: flex-start; max-width: 85%; }
+    .msg-wrapper.user-wrap { align-self: flex-end; }
+
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--oatmeal); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; opacity: 0; transition: all 0.15s ease;
+      z-index: 2;
+    }
+
+    .copy-btn svg { width: 13px; height: 13px; stroke: var(--text-secondary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    .msg-wrapper:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { background: var(--white); border-color: var(--purple); }
+    .copy-btn:hover svg { stroke: var(--purple); }
+    .copy-btn.copied { background: rgba(6,212,174,0.1); border-color: rgba(6,212,174,0.3); }
+    .copy-btn.copied svg { stroke: var(--green); }
 
     .typing-indicator { display: inline-flex; gap: 5px; padding: 16px 20px; align-items: center; }
 
@@ -690,7 +785,7 @@
     // ═══════════════════════════════════════
     var AGENTS = [
       {
-        category: "Product", categoryIcon: "\uD83D\uDCCB",
+        category: "Onboarding & Training", categoryIcon: "\uD83D\uDCCB",
         agents: [
           { id: "scout", name: "Scout", emoji: "\uD83D\uDD0D", role: "Product Feedback", desc: "Knowledge of feedback submitted for product features.", capabilities: ["Weekly Feature Requests", "Feature-specific issues", "Feature tracking & check-ins"], frequency: "Always on", badgeColor: "green", webhook: "https://trainual.app.n8n.cloud/webhook/3d55d6c4-dd85-4160-99be-df6c47a7c27c/chat", chips: ["Share highlights of feedback in the last week", "What is the most common feature request"] },
           { id: "sage", name: "Sage", emoji: "\uD83D\uDCDA", role: "Knowledge Base Expert", desc: "Instantly finds and explains any SOP, policy, or training document.", capabilities: ["Full Trainual content search", "Plain-language explanations", "Source linking & citations"], frequency: "Always on", badgeColor: "green", webhook: "", chips: [] },
@@ -897,15 +992,61 @@
       scrollToBottom();
     }
 
+    // Configure marked
+    marked.setOptions({ breaks: true, gfm: true });
+
+    function renderMarkdown(text) {
+      try { return marked.parse(text); }
+      catch (e) { return escapeHtml(text); }
+    }
+
     function addMessageBubble(text, type, animate) {
       if (animate === undefined) animate = true;
       var welcome = document.getElementById('welcome');
       if (welcome) welcome.remove();
-      var div = document.createElement('div');
-      div.className = 'message ' + type;
-      if (!animate) div.style.animation = 'none';
-      div.textContent = text;
-      messagesInner.appendChild(div);
+
+      if (type === 'bot') {
+        var wrapper = document.createElement('div');
+        wrapper.className = 'msg-wrapper';
+        if (!animate) wrapper.style.animation = 'none';
+
+        var div = document.createElement('div');
+        div.className = 'message bot';
+        if (!animate) div.style.animation = 'none';
+
+        var mdContent = document.createElement('div');
+        mdContent.className = 'md-content';
+        mdContent.innerHTML = renderMarkdown(text);
+        div.appendChild(mdContent);
+
+        // Copy button
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.title = 'Copy to clipboard';
+        copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+        copyBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          navigator.clipboard.writeText(text).then(function() {
+            copyBtn.classList.add('copied');
+            copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+            setTimeout(function() {
+              copyBtn.classList.remove('copied');
+              copyBtn.innerHTML = '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>';
+            }, 2000);
+          });
+        });
+
+        wrapper.appendChild(div);
+        wrapper.appendChild(copyBtn);
+        messagesInner.appendChild(wrapper);
+      } else {
+        var div = document.createElement('div');
+        div.className = 'message user';
+        if (!animate) div.style.animation = 'none';
+        div.textContent = text;
+        messagesInner.appendChild(div);
+      }
+
       scrollToBottom();
     }
 
