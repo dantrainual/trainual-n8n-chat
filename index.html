@@ -314,7 +314,7 @@
       <div class="sidebar-header">
         <div class="sidebar-brand">
           <div class="sidebar-logo">T</div>
-          <span class="sidebar-brand-text">Trainual Product Feedback Assistant</span>
+          <span class="sidebar-brand-text">Trainual Assistant</span>
         </div>
         <button class="new-chat-btn" id="newChatBtn" title="Start a new conversation">
           <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
@@ -349,12 +349,12 @@
               <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
             </div>
             <h2>How can I help?</h2>
-            <p>Ask me anything about product feedback inquiries.</p>
+            <p>Ask me anything about onboarding, SOPs, training processes, and company procedures.</p>
             <div class="welcome-chips">
-              <div class="welcome-chip" data-q="Architect a summary of the tickets submitted last week">Weekly Ticket Overview</div>
-              <div class="welcome-chip" data-q="How many ticket reference SOPs?">SOP Tickets</div>
-              <div class="welcome-chip" data-q="Were any tickets about training submitted recently?">Training Tickets</div>
-              <div class="welcome-chip" data-q="Did company policies come up in feedback?">Company policies</div>
+              <div class="welcome-chip" data-q="How do I onboard a new employee?">Onboarding steps</div>
+              <div class="welcome-chip" data-q="What SOPs do we have?">Browse SOPs</div>
+              <div class="welcome-chip" data-q="How do I create a new training?">Create training</div>
+              <div class="welcome-chip" data-q="Show me our company policies">Company policies</div>
             </div>
           </div>
         </div>
@@ -373,7 +373,7 @@
   </div>
 
   <script>
-    const WEBHOOK_URL = "https://trainual.app.n8n.cloud/webhook/3d55d6c4-dd85-4160-99be-df6c47a7c27c/chat";
+    const WEBHOOK_URL = "https://trainual.app.n8n.cloud/webhook/d0b07f53-cca1-4e28-8ec0-2146ae550a8c/chat";
     const STORAGE_KEY = "trainual_sessions";
 
     let sessions = loadSessions();
