@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<html lang="en"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Trainual Agent Hub</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300..700;1,9..40,300..700&amp;family=Outfit:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;family=Press+Start+2P&amp;display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
   <style>
     :root {
@@ -53,471 +53,1096 @@
     /* ════════════════════════════════
        VIEW SWITCHING
        ════════════════════════════════ */
-    .view {
-      position: absolute;
-      inset: 0;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+    #hubView {
+      position: absolute; inset: 0;
     }
 
-    .view.hidden {
-      opacity: 0;
+    /* Chat overlay */
+    /* Window container layer */
+    #windowContainer {
+      position: fixed; inset: 0; z-index: 500;
       pointer-events: none;
-      transform: scale(0.98);
     }
 
-    .view.visible {
-      opacity: 1;
+    /* Floating browser window */
+    .browser-window {
+      position: fixed;
+      width: 580px; height: 500px;
+      min-width: 380px; min-height: 320px;
+      background: #f5f5f5;
+      border-radius: 12px;
+      box-shadow:
+        0 8px 32px rgba(0,0,0,0.18),
+        0 2px 8px rgba(0,0,0,0.12),
+        0 0 0 1px rgba(0,0,0,0.06);
+      display: flex; flex-direction: column;
+      overflow: hidden;
       pointer-events: auto;
-      transform: scale(1);
+      opacity: 0; transform: scale(0.92) translateY(12px);
+      animation: winOpen 0.3s cubic-bezier(0.16,1,0.3,1) forwards;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .browser-window.focused {
+      box-shadow:
+        0 16px 56px rgba(0,0,0,0.28),
+        0 4px 16px rgba(0,0,0,0.18),
+        0 0 0 2px var(--agent-color, #888);
+    }
+
+    .browser-window.closing {
+      animation: winClose 0.2s ease forwards;
+    }
+
+    @keyframes winOpen { to { opacity: 1; transform: scale(1) translateY(0); } }
+    @keyframes winClose { to { opacity: 0; transform: scale(0.94) translateY(8px); } }
+
+    /* Resize handle */
+    .win-resize {
+      position: absolute; right: 0; bottom: 0;
+      width: 16px; height: 16px; cursor: nwse-resize;
+      z-index: 2;
+    }
+    .win-resize::after {
+      content: ''; position: absolute; right: 3px; bottom: 3px;
+      width: 8px; height: 8px;
+      border-right: 2px solid #aaa; border-bottom: 2px solid #aaa;
+      opacity: 0.5;
     }
 
     /* ════════════════════════════════
-       HUB VIEW
+       POPUP CONTENT WINDOWS
        ════════════════════════════════ */
-    #hubView {
-      background: var(--eggplant);
-      overflow-y: auto;
+    .popup-body {
+      flex: 1; overflow-y: auto; padding: 28px 32px;
+      background: #ece5d5;
+      font-family: 'DM Sans', sans-serif; color: #3a2a1a; line-height: 1.65;
+    }
+    .popup-body::-webkit-scrollbar { width: 6px; }
+    .popup-body::-webkit-scrollbar-track { background: transparent; }
+    .popup-body::-webkit-scrollbar-thumb { background: #c8bc9a; border-radius: 3px; }
+
+    .popup-body h2 {
+      font-family: 'Press Start 2P', monospace; font-size: 13px; color: #4a3a2a;
+      margin: 0 0 16px; line-height: 1.6;
+    }
+    .popup-body h3 {
+      font-family: 'Press Start 2P', monospace; font-size: 9px; color: #6a5a3a;
+      margin: 24px 0 10px; letter-spacing: 0.5px;
+    }
+    .popup-body p { margin: 0 0 14px; font-size: 14px; }
+    .popup-body .section { margin-bottom: 28px; }
+    .popup-body .divider {
+      height: 2px; background: #c8bc9a; margin: 24px 0; border: none;
+    }
+    .popup-body .tip-box {
+      background: #d8d0b8; border: 2px solid #c8bc9a; border-radius: 8px;
+      padding: 16px 18px; margin: 12px 0; font-size: 13px;
+    }
+    .popup-body .tip-box .tip-emoji { font-size: 18px; margin-right: 8px; }
+
+    /* Agent roster cards */
+    .roster-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+    .roster-card {
+      background: #d8d0b8; border: 2px solid #c8bc9a; border-radius: 10px;
+      padding: 16px; text-align: center; cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .roster-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); border-color: var(--card-color); }
+    .roster-card .roster-emoji { font-size: 28px; margin-bottom: 8px; }
+    .roster-card .roster-name {
+      font-family: 'Press Start 2P', monospace; font-size: 9px; margin-bottom: 4px;
+    }
+    .roster-card .roster-role { font-size: 11px; color: #7a6a5a; margin-bottom: 8px; }
+    .roster-card .roster-desc { font-size: 12px; color: #5a4a3a; line-height: 1.5; }
+    .roster-card .roster-status {
+      display: inline-block; font-size: 9px; padding: 2px 8px; border-radius: 10px;
+      margin-top: 8px; font-family: 'Press Start 2P', monospace;
+    }
+    .roster-card .roster-status.online { background: rgba(42,138,90,0.15); color: #2a8a5a; }
+    .roster-card .roster-status.offline { background: rgba(138,122,90,0.15); color: #8a7a5a; }
+
+    /* Slot machine */
+    .slot-machine {
+      text-align: center; padding: 24px 0;
+    }
+    .slot-reels {
+      display: flex; gap: 12px; justify-content: center; margin: 24px 0;
+    }
+    .slot-reel {
+      width: 72px; height: 72px; background: #3a3a52; border: 3px solid #4a4a62;
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 36px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
+      transition: transform 0.1s;
+    }
+    .slot-reel.spinning {
+      animation: slotSpin 0.15s linear infinite;
+    }
+    @keyframes slotSpin {
+      0% { transform: translateY(-3px); }
+      50% { transform: translateY(3px); }
+      100% { transform: translateY(-3px); }
+    }
+    .slot-pull-btn {
+      font-family: 'Press Start 2P', monospace; font-size: 10px;
+      padding: 12px 28px; background: #c44a3a; color: #fff;
+      border: 2px solid #a83a2a; border-radius: 8px; cursor: pointer;
+      box-shadow: 0 3px 0 #8a2a1a; transition: all 0.1s;
+    }
+    .slot-pull-btn:hover { background: #b44030; }
+    .slot-pull-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #8a2a1a; }
+    .slot-pull-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .slot-result {
+      margin-top: 20px; padding: 16px; background: #d8d0b8;
+      border: 2px solid #c8bc9a; border-radius: 10px;
+      font-size: 14px; line-height: 1.6; min-height: 60px;
+    }
+    .slot-result .fact-label {
+      font-family: 'Press Start 2P', monospace; font-size: 8px;
+      color: #8a7a5a; margin-bottom: 8px;
     }
 
+    /* Lo-fi radio */
+    .radio-toggle {
+      position: relative; cursor: pointer;
+    }
+    .radio-toggle .radio-waves {
+      position: absolute; top: -2px; right: -2px;
+      width: 10px; height: 10px; border-radius: 50%;
+      background: #4aeaca; display: none;
+      animation: radioPulse 1.5s ease infinite;
+    }
+    .radio-toggle.playing .radio-waves { display: block; }
+    @keyframes radioPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(1.4); }
+    }
+
+    /* Mini-game */
+    .game-container { text-align: center; }
+    .game-canvas {
+      background: #1a1a2e; border: 3px solid #3a3a52; border-radius: 8px;
+      display: block; margin: 16px auto;
+      image-rendering: pixelated;
+    }
+    .game-score {
+      font-family: 'Press Start 2P', monospace; font-size: 10px;
+      color: #4a3a2a; margin: 8px 0;
+    }
+    .game-start-btn {
+      font-family: 'Press Start 2P', monospace; font-size: 9px;
+      padding: 10px 24px; background: #3a3a52; color: #e8e0d0;
+      border: 2px solid #4a4a62; border-radius: 6px; cursor: pointer;
+      box-shadow: 0 2px 0 #2a2a3f;
+    }
+    .game-start-btn:hover { background: #4a4a62; }
+
+    .browser-toolbar {
+      display: flex; align-items: center;
+      padding: 12px 16px;
+      background: #e8e8e8;
+      border-bottom: 1px solid #d0d0d0;
+      gap: 12px; flex-shrink: 0;
+      cursor: grab; user-select: none;
+    }
+    .browser-toolbar.dragging { cursor: grabbing; }
+
+    /* Agent color accent strip at top of window */
+    .win-accent {
+      height: 3px; flex-shrink: 0;
+    }
+
+    /* Agent badge in toolbar */
+    .toolbar-agent-badge {
+      display: flex; align-items: center; gap: 6px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 9px; letter-spacing: 0.5px;
+      padding: 3px 10px 3px 6px;
+      border-radius: 5px;
+      color: #fff;
+      flex-shrink: 0;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .toolbar-agent-badge .badge-emoji {
+      font-size: 13px;
+      filter: drop-shadow(0 1px 1px rgba(0,0,0,0.15));
+    }
+
+    .browser-dots {
+      display: flex; gap: 7px; flex-shrink: 0;
+    }
+
+    .browser-dot {
+      width: 12px; height: 12px; border-radius: 50%;
+      cursor: pointer; transition: filter 0.15s ease;
+      border: none;
+    }
+
+    .browser-dot:hover { filter: brightness(0.85); }
+    .browser-dot.red { background: #FF5F57; }
+    .browser-dot.yellow { background: #FEBC2E; }
+    .browser-dot.green { background: #28C840; }
+
+    .browser-url {
+      flex: 1; display: flex; align-items: center; gap: 8px;
+      background: #fff; border: 1px solid #d0d0d0;
+      border-radius: 6px; padding: 6px 12px;
+      font-family: 'DM Sans', sans-serif; font-size: 13px;
+      color: #666; overflow: hidden;
+    }
+
+    .browser-url-lock { font-size: 11px; color: #4a4; flex-shrink: 0; }
+    .browser-url-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .browser-body {
+      flex: 1; display: flex; overflow: hidden;
+    }
+
+    /* ════════════════════════════════
+       HUB VIEW — Pixel Workroom
+       ════════════════════════════════ */
+    #hubView {
+      background: #d4c8a8;
+      overflow-y: auto;
+      image-rendering: auto;
+    }
+
+    /* Subtle paper/wall texture */
     #hubView::before {
       content: '';
       position: fixed; inset: 0;
-      background:
-        radial-gradient(ellipse 50% 40% at 15% 8%, rgba(106,40,234,0.12), transparent),
-        radial-gradient(ellipse 40% 30% at 85% 15%, rgba(6,212,174,0.06), transparent),
-        radial-gradient(ellipse 60% 50% at 50% 100%, rgba(106,40,234,0.08), transparent);
-      pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg width='6' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='1' height='1' x='0' y='0' fill='%23c8bc9a' opacity='0.3'/%3E%3Crect width='1' height='1' x='3' y='2' fill='%23b8ac8a' opacity='0.2'/%3E%3Crect width='1' height='1' x='1' y='4' fill='%23c0b498' opacity='0.25'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
     }
 
-    #hubView::-webkit-scrollbar { width: 6px; }
-    #hubView::-webkit-scrollbar-track { background: transparent; }
-    #hubView::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+    #hubView::-webkit-scrollbar { width: 8px; }
+    #hubView::-webkit-scrollbar-track { background: #c4b898; }
+    #hubView::-webkit-scrollbar-thumb { background: #a09070; border-radius: 4px; }
 
-    .hub-page {
+    .room-scene {
       position: relative; z-index: 1;
-      max-width: 1200px; margin: 0 auto;
-      padding: 48px 32px 80px;
+      max-width: 1280px; margin: 0 auto;
+      padding: 32px 32px 0;
+      min-height: 100vh;
+      display: flex; flex-direction: column;
     }
 
-    .hub-header {
-      text-align: center; margin-bottom: 56px;
-      animation: fadeUp 0.6s ease both;
+    /* ── Title Banner ── */
+    .room-banner {
+      text-align: center; margin-bottom: 28px;
+      animation: fadeUp 0.5s ease both;
     }
 
     @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(16px); }
+      from { opacity: 0; transform: translateY(12px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
-    .hub-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: var(--purple-soft); border: 1px solid var(--eggplant-border);
-      padding: 6px 16px; border-radius: 100px;
-      font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
-      text-transform: uppercase; color: var(--purple-hover); margin-bottom: 20px;
+    .banner-frame {
+      display: inline-block;
+      background: #2a2a42;
+      border: 3px solid #4a4a62;
+      box-shadow:
+        inset 0 2px 0 rgba(255,255,255,0.08),
+        0 4px 0 #1a1a2f,
+        0 6px 12px rgba(0,0,0,0.2);
+      padding: 14px 40px;
+      border-radius: 4px;
     }
 
-    .hub-badge .dot {
-      width: 6px; height: 6px; background: var(--green); border-radius: 50%;
-      box-shadow: 0 0 6px rgba(6,212,174,0.5); animation: pulse 2s ease-in-out infinite;
+    .banner-frame h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 18px; color: #e8e0d0;
+      text-shadow: 0 2px 0 #1a1a2f;
+      letter-spacing: 1px;
     }
 
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-
-    .hub-header h1 {
-      font-family: 'Outfit', sans-serif; font-size: 40px; font-weight: 800;
-      letter-spacing: -1px; margin-bottom: 12px;
-      background: linear-gradient(135deg, #fff 30%, var(--purple-hover) 100%);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    .room-subtitle {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 8px; color: #8a7e6a; margin-top: 14px;
+      letter-spacing: 0.5px;
     }
 
-    .hub-header p {
-      font-size: 16px; color: var(--text-mid);
-      max-width: 500px; margin: 0 auto; line-height: 1.6;
+    /* ── Room body ── */
+    .room-body {
+      display: flex; flex: 1;
+      position: relative;
     }
 
-    .category { margin-bottom: 40px; animation: fadeUp 0.6s ease both; }
-
-    .category-header {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 16px; padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255,255,255,0.06);
+    /* ── Side Navigation ── */
+    .side-nav {
+      width: 110px; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      align-items: center;
+      gap: 20px; padding-top: 20px;
     }
 
-    .category-icon { font-size: 18px; }
+    .side-nav.right { align-items: center; }
 
-    .category-title {
-      font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-dim);
+    .side-link {
+      display: flex; flex-direction: column; align-items: center;
+      gap: 6px; cursor: pointer; text-decoration: none;
+      transition: transform 0.15s ease;
     }
 
-    .category-count {
-      margin-left: auto; font-size: 12px; color: var(--text-dim);
-      background: rgba(255,255,255,0.04); padding: 2px 10px; border-radius: 100px;
-    }
+    .side-link:hover { transform: scale(1.08); }
 
-    .agent-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px;
-    }
-
-    .agent-card {
-      background: var(--eggplant-card); border: 1px solid var(--eggplant-border);
-      border-radius: 16px; padding: 24px; cursor: pointer;
-      transition: all 0.25s cubic-bezier(0.16,1,0.3,1);
-      position: relative; overflow: hidden;
-    }
-
-    .agent-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(106,40,234,0.3), transparent);
-      opacity: 0; transition: opacity 0.25s ease;
-    }
-
-    .agent-card:hover {
-      background: var(--eggplant-card-hover); border-color: var(--eggplant-border-hover);
-      transform: translateY(-2px);
-      box-shadow: 0 8px 32px rgba(106,40,234,0.12), 0 0 0 1px rgba(106,40,234,0.1);
-    }
-
-    .agent-card:hover::before { opacity: 1; }
-
-    .agent-card.disabled { cursor: default; opacity: 0.55; }
-    .agent-card.disabled:hover { transform: none; box-shadow: none; background: var(--eggplant-card); border-color: var(--eggplant-border); }
-    .agent-card.disabled:hover::before { opacity: 0; }
-
-    .card-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
-
-    .agent-avatar {
-      width: 44px; height: 44px; border-radius: 12px;
+    .side-icon {
+      width: 42px; height: 42px;
+      background: rgba(0,0,0,0.03);
+      border: 2px solid rgba(0,0,0,0.06);
+      border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 22px; flex-shrink: 0;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+      font-size: 20px;
+      box-shadow: 0 2px 0 rgba(0,0,0,0.06);
+      transition: all 0.15s ease;
     }
 
-    .card-top-info { flex: 1; min-width: 0; }
-
-    .agent-name {
-      font-family: 'Outfit', sans-serif; font-size: 18px; font-weight: 700;
-      color: var(--text-bright); letter-spacing: -0.3px; margin-bottom: 2px;
+    .side-link:hover .side-icon {
+      background: rgba(0,0,0,0.06);
+      border-color: rgba(0,0,0,0.1);
+      box-shadow: 0 3px 0 rgba(0,0,0,0.08);
     }
 
-    .agent-role { font-size: 13px; color: var(--text-mid); font-weight: 500; }
-
-    .status-badge {
-      font-size: 11px; font-weight: 600; padding: 4px 10px;
-      border-radius: 100px; letter-spacing: 0.3px;
+    .side-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px; color: #6a5e4a;
+      text-align: center; line-height: 1.4;
+      max-width: 70px;
     }
 
-    .status-badge.green { background: rgba(6,212,174,0.12); color: var(--green); border: 1px solid rgba(6,212,174,0.2); }
-    .status-badge.purple { background: var(--purple-soft); color: var(--purple-hover); border: 1px solid rgba(106,40,234,0.2); }
-    .status-badge.blue { background: rgba(94,183,216,0.12); color: var(--blue); border: 1px solid rgba(94,183,216,0.2); }
-    .status-badge.yellow { background: rgba(255,243,132,0.1); color: var(--highlight); border: 1px solid rgba(255,243,132,0.15); }
-    .status-badge.pink { background: rgba(244,69,182,0.1); color: var(--pink); border: 1px solid rgba(244,69,182,0.15); }
-
-    .agent-desc { font-size: 13.5px; color: var(--text-mid); line-height: 1.55; margin-bottom: 18px; }
-
-    .agent-capabilities { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
-
-    .agent-capabilities li {
-      font-size: 13px; color: var(--text-mid); display: flex; align-items: center; gap: 8px; line-height: 1.4;
+    /* ── Desk Area ── */
+    .desk-area {
+      flex: 1;
+      display: flex; flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px 0;
     }
 
-    .agent-capabilities li::before {
-      content: ''; width: 4px; height: 4px; border-radius: 50%;
-      background: var(--purple); flex-shrink: 0; opacity: 0.6;
+    .desk-row {
+      display: flex; justify-content: center;
+      gap: 24px;
     }
 
-    .card-footer {
-      display: flex; align-items: center; gap: 10px;
-      padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.05);
+    .desk-row.back { transform: scale(0.92); margin-bottom: -4px; }
+    .desk-row.front { transform: scale(1); }
+
+    /* ── Individual Desk Unit ── */
+    .desk-unit {
+      display: flex; flex-direction: column;
+      align-items: center; cursor: pointer;
+      transition: transform 0.2s ease;
+      animation: fadeUp 0.5s ease both;
+      position: relative;
     }
 
-    .chat-btn {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 16px; background: var(--purple); color: white; border: none;
-      border-radius: 10px; font-family: 'DM Sans', sans-serif;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(106,40,234,0.25);
+    .desk-unit:hover { transform: translateY(-6px); }
+    .desk-unit:hover .pixel-char { animation: bounce 0.4s ease; }
+
+    .desk-unit.offline { cursor: default; opacity: 0.45; filter: grayscale(0.3); }
+    .desk-unit.offline:hover { transform: none; }
+    .desk-unit.offline:hover .pixel-char { animation: none; }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      40% { transform: translateY(-8px); }
+      60% { transform: translateY(-4px); }
     }
 
-    .chat-btn:hover { background: var(--purple-hover); box-shadow: 0 4px 16px rgba(106,40,234,0.4); transform: translateY(-1px); }
-
-    .chat-btn svg {
-      width: 14px; height: 14px; stroke: currentColor; fill: none;
-      stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+    /* Character */
+    .pixel-char {
+      width: 64px; height: 72px;
+      position: relative; z-index: 2;
+      margin-bottom: -12px;
     }
 
-    .chat-btn:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-    .chat-btn:disabled:hover { background: var(--purple); transform: none; }
-
-    .card-meta { margin-left: auto; font-size: 11px; color: var(--text-dim); }
-
-    /* Pipeline */
-    .pipeline {
-      margin-top: 56px; padding: 32px;
-      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05);
-      border-radius: 18px; animation: fadeUp 0.6s ease 0.4s both;
+    .pixel-char svg {
+      width: 100%; height: 100%;
+      image-rendering: auto;
     }
 
-    .pipeline-label {
-      font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-dim); margin-bottom: 20px;
+    /* Chair */
+    .chair {
+      width: 60px; height: 44px;
+      background: #3a3a52;
+      border: 2px solid #2a2a3f;
+      border-radius: 6px 6px 2px 2px;
+      position: relative; z-index: 1;
+      margin-bottom: -16px;
+      box-shadow: 0 2px 0 #222238;
     }
 
-    .pipeline-flow { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; }
-
-    .pipeline-node {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: var(--eggplant-card); border: 1px solid var(--eggplant-border);
-      padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
-      color: var(--text-bright); white-space: nowrap;
+    /* Desk surface */
+    .desk-table {
+      width: 120px; height: 18px;
+      background: linear-gradient(180deg, #b09870, #9a8660);
+      border: 2px solid #7a6a4a;
+      border-radius: 3px;
+      position: relative; z-index: 3;
+      box-shadow: 0 3px 0 #6a5a3a;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
     }
 
-    .pipeline-arrow { color: var(--text-dim); font-size: 14px; padding: 0 2px; }
+    /* Laptop on desk */
+    .laptop-screen {
+      width: 24px; height: 14px;
+      background: #1a2a3a;
+      border: 1.5px solid #3a4a5a;
+      border-radius: 2px;
+      position: relative;
+      box-shadow: inset 0 0 6px rgba(80,180,255,0.15);
+    }
 
-    .pipeline-steps { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; justify-content: center; margin-top: 12px; }
-    .pipeline-step { font-size: 11px; color: var(--text-dim); }
-    .pipeline-step-arrow { font-size: 11px; color: var(--text-dim); opacity: 0.5; }
+    .laptop-screen::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px; right: 3px; bottom: 3px;
+      background: linear-gradient(135deg, rgba(80,180,255,0.2), rgba(80,255,180,0.1));
+      border-radius: 1px;
+    }
+
+    .laptop-keys {
+      width: 28px; height: 4px;
+      background: #4a4a5a;
+      border-radius: 1px;
+      border: 1px solid #3a3a4a;
+    }
+
+    /* Desk legs */
+    .desk-legs {
+      display: flex; justify-content: space-between;
+      width: 110px; height: 20px;
+    }
+
+    .desk-leg {
+      width: 6px; height: 20px;
+      background: linear-gradient(180deg, #7a6a4a, #6a5a3a);
+      border-radius: 0 0 2px 2px;
+    }
+
+    /* Agent name */
+    .desk-name {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      margin-top: 4px;
+      text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+      letter-spacing: 0.5px;
+    }
+
+    .desk-role {
+      font-family: 'DM Sans', sans-serif;
+      font-size: 10px; color: #6a5e4a;
+      margin-top: 2px; font-weight: 500;
+    }
+
+    .desk-status {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 5px; margin-top: 4px;
+      padding: 3px 8px; border-radius: 3px;
+    }
+
+    .desk-status.online {
+      color: #2a8a5a; background: rgba(42,138,90,0.1);
+      border: 1px solid rgba(42,138,90,0.2);
+    }
+
+    .desk-status.away {
+      color: #8a7a5a; background: rgba(138,122,90,0.1);
+      border: 1px solid rgba(138,122,90,0.15);
+    }
+
+    /* ── Decorations ── */
+    .room-decor {
+      display: flex; justify-content: center;
+      gap: 160px; margin-top: -4px; margin-bottom: 8px;
+      position: relative; z-index: 1;
+    }
+
+    .plant-pot {
+      width: 40px; text-align: center;
+      font-size: 32px;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.15));
+    }
+
+    .coffee-table {
+      width: 80px; height: 12px;
+      background: linear-gradient(180deg, #c0a878, #a89060);
+      border: 2px solid #8a7a5a;
+      border-radius: 3px;
+      margin: 0 auto;
+      box-shadow: 0 2px 0 #7a6a4a;
+    }
+
+    .coffee-table-legs {
+      display: flex; justify-content: space-between;
+      width: 70px; margin: 0 auto;
+    }
+
+    .coffee-table-leg {
+      width: 4px; height: 10px;
+      background: #8a7a5a;
+      border-radius: 0 0 1px 1px;
+    }
+
+    /* ── Coffee Bar ── */
+    .coffee-bar {
+      display: flex; align-items: flex-end; justify-content: center;
+      gap: 16px; margin: 8px 0 4px; animation: fadeUp 0.5s ease 0.2s both;
+    }
+
+    .coffee-machine {
+      width: 40px; height: 48px;
+      background: linear-gradient(180deg, #4a4a5a, #3a3a4a);
+      border: 2px solid #2a2a3a;
+      border-radius: 4px 4px 2px 2px;
+      position: relative;
+      box-shadow: 0 3px 0 #1a1a2a;
+    }
+
+    .coffee-machine::before {
+      content: ''; position: absolute;
+      top: 8px; left: 8px; right: 8px; height: 12px;
+      background: #1a1a2a; border-radius: 2px;
+      box-shadow: inset 0 0 4px rgba(234,120,60,0.3);
+    }
+
+    .coffee-machine::after {
+      content: ''; position: absolute;
+      bottom: 6px; left: 50%; transform: translateX(-50%);
+      width: 8px; height: 4px; background: #ea784a;
+      border-radius: 50%; box-shadow: 0 0 6px rgba(234,120,60,0.5);
+    }
+
+    .coffee-counter {
+      width: 180px; height: 14px;
+      background: linear-gradient(180deg, #8a7a5a, #7a6a4a);
+      border: 2px solid #6a5a3a;
+      border-radius: 3px;
+      box-shadow: 0 3px 0 #5a4a2a;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      position: relative;
+    }
+
+    .coffee-cup {
+      width: 10px; height: 8px;
+      background: #e8e0d0;
+      border: 1.5px solid #c0b090;
+      border-radius: 0 0 2px 2px;
+      position: relative; top: -6px;
+    }
+
+    .coffee-cup::after {
+      content: '~'; position: absolute;
+      top: -8px; left: 1px;
+      font-size: 8px; color: rgba(180,160,120,0.6);
+    }
+
+    .coffee-counter-legs {
+      display: flex; justify-content: space-between;
+      width: 170px; margin: 0 auto;
+    }
+
+    .coffee-counter-leg {
+      width: 5px; height: 14px;
+      background: #6a5a3a;
+      border-radius: 0 0 2px 2px;
+    }
+
+    .coffee-plant {
+      font-size: 22px;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+    }
+
+    .coffee-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px; color: #8a7e6a;
+      text-align: center; margin-top: 2px;
+    }
+
+    /* ── Checkered Floor ── */
+    .room-floor {
+      height: 120px;
+      background: repeating-conic-gradient(#3a3a4f 0% 25%, #2e2e42 0% 50%) 0 0 / 48px 48px;
+      position: relative;
+      margin-top: auto;
+      border-top: 4px solid #4a4a5f;
+    }
+
+    .room-floor::before {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.15), transparent 40%, rgba(0,0,0,0.1));
+      pointer-events: none;
+    }
+
+    /* Floor decorations */
+    .floor-plants {
+      display: flex; justify-content: space-between;
+      padding: 16px 40px 0;
+      position: relative; z-index: 1;
+    }
+
+    .floor-plant { font-size: 36px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); }
+
+    /* ── Bookshelf ── */
+    .bookshelf {
+      width: 80px; margin-top: 16px;
+      animation: fadeUp 0.5s ease 0.3s both;
+    }
+
+    .bookshelf-top {
+      width: 80px; height: 6px;
+      background: linear-gradient(180deg, #7a6a4a, #6a5a3a);
+      border: 1.5px solid #5a4a2a;
+      border-radius: 2px 2px 0 0;
+    }
+
+    .shelf-row {
+      width: 80px; height: 30px;
+      background: #8a7a5a;
+      border-left: 2px solid #6a5a3a;
+      border-right: 2px solid #6a5a3a;
+      display: flex; align-items: flex-end; justify-content: center;
+      gap: 2px; padding: 0 4px;
+    }
+
+    .shelf-divider {
+      width: 80px; height: 4px;
+      background: linear-gradient(180deg, #7a6a4a, #6a5a3a);
+      border-left: 2px solid #5a4a2a;
+      border-right: 2px solid #5a4a2a;
+    }
+
+    .book { width: 8px; border-radius: 1px 1px 0 0; box-shadow: 1px 0 0 rgba(0,0,0,0.1); }
+
+    .furniture-label {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 5px; color: #8a7e6a; text-align: center; margin-top: 5px;
+    }
+
+    /* ── Filing Cabinet ── */
+    .filing-cabinet {
+      width: 50px; margin-top: 12px;
+      animation: fadeUp 0.5s ease 0.4s both;
+    }
+
+    .cabinet-body {
+      width: 50px;
+      background: #7a7a8a;
+      border: 2px solid #5a5a6a;
+      border-radius: 2px;
+      box-shadow: 0 3px 0 #4a4a5a;
+    }
+
+    .cabinet-drawer {
+      height: 20px;
+      border-bottom: 1.5px solid #5a5a6a;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .cabinet-drawer:last-child { border-bottom: none; }
+
+    .cabinet-handle {
+      width: 14px; height: 3px;
+      background: #9a9aaa; border-radius: 1px;
+      border: 1px solid #6a6a7a;
+    }
+
+    /* ── Water Cooler ── */
+    .water-cooler {
+      width: 44px; margin-top: 16px;
+      display: flex; flex-direction: column; align-items: center;
+      animation: fadeUp 0.5s ease 0.35s both;
+    }
+
+    .cooler-jug {
+      width: 26px; height: 26px;
+      background: linear-gradient(180deg, rgba(150,200,240,0.35), rgba(100,170,230,0.55));
+      border: 2px solid rgba(80,150,210,0.45);
+      border-radius: 6px 6px 2px 2px;
+      position: relative;
+    }
+
+    .cooler-jug::after {
+      content: ''; position: absolute;
+      top: 3px; left: 3px; width: 5px; height: 8px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 2px;
+    }
+
+    .cooler-body {
+      width: 32px; height: 28px;
+      background: #e8e0d0;
+      border: 2px solid #c0b090;
+      border-radius: 2px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+    }
+
+    .cooler-tap { width: 8px; height: 4px; border-radius: 0 0 2px 2px; }
+    .cooler-tap.hot { background: #ea6a4a; }
+    .cooler-tap.cold { background: #4a8aea; }
+
+    .cooler-stand {
+      width: 24px; height: 12px;
+      border-left: 3px solid #b0a080;
+      border-right: 3px solid #b0a080;
+      border-bottom: 3px solid #b0a080;
+      border-radius: 0 0 2px 2px;
+    }
+
+    /* ── Whiteboard ── */
+    .whiteboard {
+      display: flex; flex-direction: column; align-items: center;
+      margin-bottom: 6px;
+      animation: fadeUp 0.5s ease 0.15s both;
+    }
+
+    .wb-frame {
+      width: 220px; height: 64px;
+      background: #f0ece4;
+      border: 3px solid #a0a0a0;
+      border-radius: 3px;
+      box-shadow: 0 3px 0 #888, 0 5px 8px rgba(0,0,0,0.08);
+      padding: 8px 12px;
+      display: flex; flex-direction: column; gap: 5px;
+    }
+
+    .wb-line { height: 2px; border-radius: 1px; opacity: 0.35; }
+
+    .wb-tray {
+      width: 80px; height: 5px;
+      background: #c0c0c0; border: 1px solid #a0a0a0;
+      border-radius: 0 0 3px 3px;
+      margin: 0 auto;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+
+    .wb-marker { width: 10px; height: 3px; border-radius: 1px; }
+
+    /* ── Couch / Lounge Area ── */
+    .lounge-area {
+      display: flex; align-items: flex-end; justify-content: center;
+      gap: 20px; padding: 16px 0 8px;
+      animation: fadeUp 0.5s ease 0.4s both;
+    }
+
+    .couch { display: flex; flex-direction: column; align-items: center; }
+
+    .couch-back {
+      width: 110px; height: 16px;
+      background: linear-gradient(180deg, #6a5a8a, #5a4a7a);
+      border: 2px solid #4a3a6a;
+      border-radius: 6px 6px 0 0;
+      box-shadow: inset 0 2px 0 rgba(255,255,255,0.08);
+    }
+
+    .couch-seat {
+      width: 120px; height: 12px;
+      background: #7a6a9a;
+      border: 2px solid #5a4a7a; border-top: none;
+      border-radius: 0 0 4px 4px;
+      display: flex; align-items: center; justify-content: center; gap: 18px;
+    }
+
+    .couch-cushion {
+      width: 2px; height: 6px;
+      background: rgba(0,0,0,0.1); border-radius: 1px;
+    }
+
+    .couch-legs { display: flex; justify-content: space-between; width: 110px; }
+
+    .couch-leg {
+      width: 4px; height: 5px;
+      background: #4a3a6a; border-radius: 0 0 2px 2px;
+    }
+
+    .side-table { display: flex; flex-direction: column; align-items: center; }
+
+    .side-table-top {
+      width: 32px; height: 5px;
+      background: linear-gradient(180deg, #b09870, #9a8660);
+      border: 1.5px solid #7a6a4a; border-radius: 2px;
+      box-shadow: 0 2px 0 #6a5a3a;
+    }
+
+    .side-table-leg { width: 3px; height: 12px; background: #7a6a4a; }
+
+    .side-table-item { font-size: 12px; margin-bottom: 2px; }
+
+    .rug {
+      width: 180px; height: 6px;
+      background: repeating-linear-gradient(90deg, #8a6a5a 0px, #8a6a5a 8px, #9a7a6a 8px, #9a7a6a 16px);
+      border-radius: 3px; border: 1px solid #7a5a4a; opacity: 0.45;
+      margin-top: 4px;
+    }
 
     /* ════════════════════════════════
-       CHAT VIEW
+       CHAT VIEW — Retro Workroom Theme
        ════════════════════════════════ */
-    #chatView {
-      display: flex;
-      background: var(--white);
+    .chat-view-inner {
+      display: flex; flex: 1;
+      background: #ece5d5;
+      overflow: hidden;
     }
 
     /* Sidebar */
     .sidebar {
-      width: 280px;
-      background: var(--eggplant);
+      width: 260px;
+      background: #c8bc9a;
       display: flex; flex-direction: column;
-      border-right: 1px solid rgba(255,255,255,0.06);
+      border-right: 2px solid #a89878;
       flex-shrink: 0; position: relative; z-index: 10;
+      transition: width 0.25s cubic-bezier(0.16,1,0.3,1), min-width 0.25s cubic-bezier(0.16,1,0.3,1);
+      overflow: hidden;
+    }
+
+    .sidebar.collapsed {
+      width: 0; min-width: 0;
+      border-right: none;
+    }
+    .sidebar.collapsed .sidebar-header,
+    .sidebar.collapsed .session-list,
+    .sidebar.collapsed .sidebar-footer {
+      opacity: 0; pointer-events: none;
     }
 
     .sidebar::after {
       content: ''; position: absolute; inset: 0;
-      background: linear-gradient(180deg, rgba(106,40,234,0.04) 0%, transparent 40%, rgba(106,40,234,0.02) 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 30%);
       pointer-events: none;
     }
 
     .sidebar > * { position: relative; z-index: 1; }
 
-    .sidebar-header { padding: 24px 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .sidebar-header { padding: 20px 16px 16px; border-bottom: 2px solid #a89878; }
 
-    .sidebar-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .sidebar-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
 
     .sidebar-logo {
-      width: 34px; height: 34px; background: var(--purple); border-radius: 10px;
+      width: 32px; height: 32px; background: #3a3a52; border-radius: 6px;
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 17px; color: white;
-      box-shadow: 0 2px 12px rgba(106,40,234,0.35);
+      font-family: 'Press Start 2P', monospace; font-weight: 400; font-size: 12px; color: #e8e0d0;
+      box-shadow: 0 2px 0 #2a2a3f;
+      border: 2px solid #4a4a62;
     }
 
     .sidebar-brand-text {
-      font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 16px;
-      color: var(--eggplant-text-bright); letter-spacing: -0.3px;
+      font-family: 'Press Start 2P', monospace; font-weight: 400; font-size: 10px;
+      color: #4a3a2a; letter-spacing: 0.5px;
     }
 
     .back-btn {
-      width: 100%; padding: 10px 14px; margin-bottom: 10px;
-      background: none; border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 10px; color: var(--eggplant-text);
-      font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+      width: 100%; padding: 10px 12px; margin-bottom: 8px;
+      background: #b8ac8a; border: 2px solid #a89878;
+      border-radius: 6px; color: #5a4a3a;
+      font-family: 'Press Start 2P', monospace; font-size: 7px;
       cursor: pointer; display: flex; align-items: center; gap: 8px;
-      transition: all 0.2s ease;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 0 #98886a;
     }
 
-    .back-btn:hover { background: rgba(255,255,255,0.05); color: var(--eggplant-text-bright); }
+    .back-btn:hover { background: #a89878; color: #3a2a1a; box-shadow: 0 1px 0 #98886a; transform: translateY(1px); }
 
     .back-btn svg {
-      width: 14px; height: 14px; stroke: currentColor; fill: none;
-      stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+      width: 12px; height: 12px; stroke: currentColor; fill: none;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
     }
 
     .new-chat-btn {
-      width: 100%; padding: 11px 14px;
-      background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 12px; color: var(--eggplant-text-bright);
-      font-family: 'DM Sans', sans-serif; font-size: 13.5px; font-weight: 500;
-      cursor: pointer; display: flex; align-items: center; gap: 9px; transition: all 0.2s ease;
+      width: 100%; padding: 10px 12px;
+      background: #3a3a52; border: 2px solid #4a4a62;
+      border-radius: 6px; color: #e8e0d0;
+      font-family: 'Press Start 2P', monospace; font-size: 7px;
+      cursor: pointer; display: flex; align-items: center; gap: 8px;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 0 #2a2a3f;
     }
 
-    .new-chat-btn:hover { background: rgba(106,40,234,0.15); border-color: rgba(106,40,234,0.25); }
+    .new-chat-btn:hover { background: #4a4a62; box-shadow: 0 1px 0 #2a2a3f; transform: translateY(1px); }
 
     .new-chat-btn svg {
-      width: 16px; height: 16px; stroke: currentColor; fill: none;
-      stroke-width: 2; stroke-linecap: round;
+      width: 14px; height: 14px; stroke: currentColor; fill: none;
+      stroke-width: 2.5; stroke-linecap: round;
     }
 
     .new-chat-btn .shortcut {
-      margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 10px;
-      color: var(--eggplant-text); background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 5px;
+      margin-left: auto; font-family: 'Press Start 2P', monospace; font-size: 6px;
+      color: #8a8a9a; background: rgba(255,255,255,0.08); padding: 2px 5px; border-radius: 3px;
     }
 
-    .session-list { flex: 1; overflow-y: auto; padding: 12px; }
-    .session-list::-webkit-scrollbar { width: 4px; }
+    .session-list { flex: 1; overflow-y: auto; padding: 10px; }
+    .session-list::-webkit-scrollbar { width: 6px; }
     .session-list::-webkit-scrollbar-track { background: transparent; }
-    .session-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+    .session-list::-webkit-scrollbar-thumb { background: #a89878; border-radius: 4px; }
 
     .session-group-label {
-      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
-      color: var(--eggplant-text); padding: 12px 8px 8px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px;
+      color: #7a6a5a; padding: 10px 8px 6px;
     }
 
     .session-item {
-      display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px;
+      display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 6px;
       cursor: pointer; transition: all 0.15s ease; margin-bottom: 2px; position: relative;
+      border: 1px solid transparent;
     }
 
-    .session-item:hover { background: rgba(255,255,255,0.05); }
-    .session-item.active { background: rgba(106,40,234,0.18); }
+    .session-item:hover { background: rgba(0,0,0,0.05); border-color: #a89878; }
+    .session-item.active { background: #b8ac8a; border-color: #a89878; box-shadow: 0 1px 0 #98886a; }
 
     .session-item.active::before {
       content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
-      width: 3px; height: 20px; background: var(--purple); border-radius: 0 3px 3px 0;
-      box-shadow: 0 0 8px rgba(106,40,234,0.4);
+      width: 3px; height: 18px; background: #3a3a52; border-radius: 0 3px 3px 0;
     }
 
     .session-icon {
-      width: 30px; height: 30px; background: rgba(255,255,255,0.04); border-radius: 8px;
+      width: 28px; height: 28px; background: rgba(0,0,0,0.05); border-radius: 6px;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      border: 1px solid rgba(0,0,0,0.06);
     }
 
     .session-icon svg {
-      width: 14px; height: 14px; stroke: var(--eggplant-text); fill: none;
+      width: 13px; height: 13px; stroke: #7a6a5a; fill: none;
       stroke-width: 2; stroke-linecap: round;
     }
 
-    .session-item.active .session-icon { background: rgba(106,40,234,0.2); }
-    .session-item.active .session-icon svg { stroke: rgba(106,40,234,0.8); }
+    .session-item.active .session-icon { background: #a89878; border-color: #98886a; }
+    .session-item.active .session-icon svg { stroke: #3a2a1a; }
 
     .session-info { flex: 1; min-width: 0; }
 
     .session-title {
-      font-size: 13px; font-weight: 500; color: var(--eggplant-text-bright);
+      font-size: 12px; font-weight: 600; color: #4a3a2a;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'DM Sans', sans-serif;
     }
 
-    .session-item.active .session-title { color: #fff; }
-    .session-time { font-size: 11px; color: var(--eggplant-text); margin-top: 2px; }
+    .session-item.active .session-title { color: #2a1a0a; }
+    .session-time { font-size: 10px; color: #8a7a6a; margin-top: 2px; font-family: 'DM Sans', sans-serif; }
 
     .session-delete {
-      opacity: 0; background: none; border: none; cursor: pointer; padding: 4px; border-radius: 6px;
+      opacity: 0; background: none; border: none; cursor: pointer; padding: 4px; border-radius: 4px;
       transition: all 0.15s; display: flex; align-items: center; justify-content: center;
     }
 
     .session-delete svg {
-      width: 14px; height: 14px; stroke: var(--eggplant-text); fill: none;
+      width: 13px; height: 13px; stroke: #8a7a6a; fill: none;
       stroke-width: 2; stroke-linecap: round;
     }
 
     .session-item:hover .session-delete { opacity: 1; }
-    .session-delete:hover { background: rgba(244,69,182,0.2); }
-    .session-delete:hover svg { stroke: var(--pink); }
+    .session-delete:hover { background: rgba(234,74,74,0.12); }
+    .session-delete:hover svg { stroke: #ea4a4a; }
 
-    .sidebar-footer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.06); }
+    .sidebar-footer { padding: 14px 16px; border-top: 2px solid #a89878; }
 
     .sidebar-footer-text {
-      font-size: 11px; color: var(--eggplant-text); display: flex; align-items: center; gap: 6px;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 6px; color: #6a5a4a; display: flex; align-items: center; gap: 6px;
     }
 
     .sidebar-footer-text .dot {
-      width: 6px; height: 6px; background: var(--green); border-radius: 50%;
-      animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(6,212,174,0.4);
+      width: 6px; height: 6px; background: #4a8a4a; border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite; box-shadow: 0 0 4px rgba(74,138,74,0.4);
     }
+
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
     /* Main chat area */
     .chat-main {
       flex: 1; display: flex; flex-direction: column;
-      background: var(--bg); min-width: 0;
+      background: #ece5d5; min-width: 0;
     }
 
     .topbar {
-      height: 60px; border-bottom: 1px solid var(--border-light);
-      display: flex; align-items: center; padding: 0 24px; gap: 12px;
-      background: var(--white); flex-shrink: 0;
+      height: 52px; border-bottom: 2px solid #c8bc9a;
+      display: flex; align-items: center; padding: 0 20px; gap: 10px;
+      background: #d8d0be; flex-shrink: 0;
     }
 
     .topbar-agent {
       display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;
     }
 
-    .topbar-agent-emoji { font-size: 20px; }
+    .topbar-agent-emoji { font-size: 18px; }
 
     .topbar-agent-info { min-width: 0; }
 
     .topbar-title {
-      font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 15px;
-      color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      font-family: 'Press Start 2P', monospace; font-size: 9px;
+      color: #3a2a1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    .topbar-role { font-size: 12px; color: var(--text-secondary); }
+    .topbar-role { font-family: 'DM Sans', sans-serif; font-size: 11px; color: #7a6a5a; margin-top: 2px; }
 
     .topbar-session-id {
-      font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary);
-      background: var(--oatmeal); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a6a5a;
+      background: #c8bc9a; padding: 3px 8px; border-radius: 4px; border: 1px solid #b8ac8a;
       flex-shrink: 0;
     }
 
     .sidebar-toggle {
-      display: none; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 8px;
+      display: flex; background: none; border: none; cursor: pointer; padding: 6px; border-radius: 6px;
     }
 
     .sidebar-toggle svg {
-      width: 20px; height: 20px; stroke: var(--text-secondary); fill: none;
+      width: 18px; height: 18px; stroke: #6a5a4a; fill: none;
       stroke-width: 2; stroke-linecap: round;
     }
 
-    .sidebar-toggle:hover { background: var(--oatmeal); }
+    .sidebar-toggle:hover { background: #c8bc9a; }
 
-    .messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; background: var(--bg); }
+    .messages { flex: 1; overflow-y: auto; scroll-behavior: smooth; background: #ece5d5; }
     .messages::-webkit-scrollbar { width: 6px; }
     .messages::-webkit-scrollbar-track { background: transparent; }
-    .messages::-webkit-scrollbar-thumb { background: rgba(2,0,68,0.08); border-radius: 10px; }
+    .messages::-webkit-scrollbar-thumb { background: #c8bc9a; border-radius: 4px; }
 
     .messages-inner {
-      max-width: 720px; margin: 0 auto; padding: 24px 32px;
+      max-width: 680px; margin: 0 auto; padding: 20px 28px;
       display: flex; flex-direction: column; gap: 4px;
     }
 
     .welcome {
       display: flex; flex-direction: column; align-items: center; text-align: center;
-      padding: 80px 32px 40px; animation: fadeUp 0.5s ease both;
+      padding: 60px 28px 40px; animation: fadeUp 0.5s ease both;
     }
 
     .welcome-icon {
-      width: 68px; height: 68px;
-      background: linear-gradient(135deg, var(--purple-soft), var(--purple-muted));
-      border-radius: 22px; display: flex; align-items: center; justify-content: center;
-      margin-bottom: 24px; font-size: 32px;
+      width: 64px; height: 64px;
+      background: #d4c8a8;
+      border: 2px solid #b8ac8a;
+      border-radius: 14px; display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px; font-size: 28px;
+      box-shadow: 0 3px 0 #a89878;
     }
 
     .welcome h2 {
-      font-family: 'Outfit', sans-serif; font-size: 26px; font-weight: 700;
-      color: var(--eggplant); letter-spacing: -0.5px; margin-bottom: 8px;
+      font-family: 'Press Start 2P', monospace; font-size: 14px;
+      color: #3a2a1a; letter-spacing: 0.5px; margin-bottom: 10px;
     }
 
-    .welcome p { font-size: 14.5px; color: var(--text-secondary); line-height: 1.6; max-width: 400px; }
+    .welcome p { font-size: 13px; color: #6a5a4a; line-height: 1.6; max-width: 380px; font-family: 'DM Sans', sans-serif; }
 
-    .welcome-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 32px; }
+    .welcome-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 28px; }
 
     .welcome-chip {
-      padding: 10px 18px; border-radius: 12px; border: 1px solid var(--border);
-      background: var(--white); font-size: 13px; color: var(--text-secondary);
-      cursor: pointer; transition: all 0.2s ease; font-family: 'DM Sans', sans-serif;
+      padding: 9px 16px; border-radius: 6px;
+      border: 2px solid #c8bc9a;
+      background: #d8d0be; font-size: 12px; color: #5a4a3a;
+      cursor: pointer; transition: all 0.15s ease; font-family: 'DM Sans', sans-serif;
+      box-shadow: 0 2px 0 #b8ac8a;
     }
 
     .welcome-chip:hover {
-      border-color: var(--purple); color: var(--purple); background: var(--purple-soft);
-      box-shadow: 0 2px 16px rgba(106,40,234,0.08); transform: translateY(-1px);
+      border-color: #a89878; color: #3a2a1a; background: #c8bc9a;
+      box-shadow: 0 1px 0 #a89878; transform: translateY(1px);
     }
 
     .message {
-      max-width: 85%; padding: 14px 18px; line-height: 1.6; font-size: 14.5px;
+      max-width: 85%; padding: 12px 16px; line-height: 1.6; font-size: 13.5px;
       animation: msgIn 0.3s cubic-bezier(0.16,1,0.3,1) both;
       word-wrap: break-word; position: relative;
+      font-family: 'DM Sans', sans-serif;
     }
 
     .message.user { white-space: pre-wrap; }
@@ -528,48 +1153,53 @@
     }
 
     .bot {
-      background: var(--white); border: 1px solid var(--border-light); color: var(--text);
-      border-radius: 4px 18px 18px 18px; align-self: flex-start; box-shadow: 0 1px 4px rgba(2,0,68,0.04);
+      background: #d8d0be; border: 2px solid #c8bc9a; color: #3a2a1a;
+      border-radius: 4px 14px 14px 14px; align-self: flex-start;
+      box-shadow: 0 2px 0 #b8ac8a;
     }
 
     .user {
-      background: var(--eggplant); color: var(--white);
-      border-radius: 18px 4px 18px 18px; align-self: flex-end; box-shadow: 0 4px 16px rgba(2,0,68,0.15);
+      background: #3a3a52; color: #e8e0d0;
+      border-radius: 14px 4px 14px 14px; align-self: flex-end;
+      box-shadow: 0 2px 0 #2a2a3f;
+      border: 2px solid #4a4a62;
     }
 
     /* ── Markdown content in bot messages ── */
     .bot .md-content p { margin: 0 0 10px; }
     .bot .md-content p:last-child { margin-bottom: 0; }
-    .bot .md-content strong { font-weight: 600; color: var(--eggplant); }
+    .bot .md-content strong { font-weight: 600; color: #2a1a0a; }
     .bot .md-content em { font-style: italic; }
 
     .bot .md-content h1, .bot .md-content h2, .bot .md-content h3 {
-      font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--eggplant);
-      margin: 16px 0 8px; letter-spacing: -0.3px;
+      font-family: 'Press Start 2P', monospace; color: #3a2a1a;
+      margin: 14px 0 8px;
     }
 
-    .bot .md-content h1 { font-size: 18px; }
-    .bot .md-content h2 { font-size: 16px; }
-    .bot .md-content h3 { font-size: 14.5px; }
+    .bot .md-content h1 { font-size: 11px; }
+    .bot .md-content h2 { font-size: 10px; }
+    .bot .md-content h3 { font-size: 9px; }
     .bot .md-content h1:first-child, .bot .md-content h2:first-child, .bot .md-content h3:first-child { margin-top: 0; }
 
     .bot .md-content ul, .bot .md-content ol {
-      margin: 8px 0; padding-left: 20px;
+      margin: 8px 0; padding-left: 18px;
     }
 
     .bot .md-content li { margin-bottom: 4px; }
-    .bot .md-content li::marker { color: var(--purple); }
+    .bot .md-content li::marker { color: #8a7a5a; }
 
     .bot .md-content code {
-      font-family: 'JetBrains Mono', monospace; font-size: 12.5px;
-      background: var(--oatmeal); padding: 2px 6px; border-radius: 5px;
-      border: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: #c8bc9a; padding: 2px 6px; border-radius: 4px;
+      border: 1px solid #b8ac8a;
     }
 
     .bot .md-content pre {
-      background: var(--eggplant); color: var(--eggplant-text-bright);
-      padding: 14px 16px; border-radius: 10px; margin: 10px 0;
-      overflow-x: auto; font-size: 12.5px; line-height: 1.5;
+      background: #2a2a3f; color: #e8e0d0;
+      padding: 12px 14px; border-radius: 6px; margin: 10px 0;
+      overflow-x: auto; font-size: 12px; line-height: 1.5;
+      border: 2px solid #3a3a52;
+      box-shadow: 0 2px 0 #1a1a2f;
     }
 
     .bot .md-content pre code {
@@ -578,33 +1208,33 @@
     }
 
     .bot .md-content a {
-      color: var(--purple); text-decoration: none; font-weight: 500;
-      border-bottom: 1px solid rgba(106,40,234,0.3); transition: border-color 0.15s;
+      color: #3a6aea; text-decoration: none; font-weight: 500;
+      border-bottom: 1px solid rgba(58,106,234,0.3); transition: border-color 0.15s;
     }
 
-    .bot .md-content a:hover { border-color: var(--purple); }
+    .bot .md-content a:hover { border-color: #3a6aea; }
 
     .bot .md-content blockquote {
-      border-left: 3px solid var(--purple-muted); padding-left: 14px;
-      margin: 10px 0; color: var(--text-secondary); font-style: italic;
+      border-left: 3px solid #a89878; padding-left: 12px;
+      margin: 10px 0; color: #6a5a4a; font-style: italic;
     }
 
     .bot .md-content hr {
-      border: none; border-top: 1px solid var(--border); margin: 14px 0;
+      border: none; border-top: 1px solid #c8bc9a; margin: 12px 0;
     }
 
     .bot .md-content table {
-      width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 13px;
+      width: 100%; border-collapse: collapse; margin: 10px 0; font-size: 12px;
     }
 
     .bot .md-content th, .bot .md-content td {
-      padding: 8px 10px; text-align: left;
-      border-bottom: 1px solid var(--border);
+      padding: 7px 10px; text-align: left;
+      border-bottom: 1px solid #c8bc9a;
     }
 
     .bot .md-content th {
-      font-weight: 600; color: var(--eggplant);
-      background: var(--oatmeal); font-size: 12px;
+      font-weight: 600; color: #3a2a1a;
+      background: #c8bc9a; font-size: 11px;
       text-transform: uppercase; letter-spacing: 0.3px;
     }
 
@@ -613,26 +1243,26 @@
     .msg-wrapper.user-wrap { align-self: flex-end; }
 
     .copy-btn {
-      position: absolute; top: 8px; right: 8px;
-      width: 28px; height: 28px; border-radius: 8px;
-      background: var(--oatmeal); border: 1px solid var(--border);
+      position: absolute; top: 6px; right: 6px;
+      width: 26px; height: 26px; border-radius: 5px;
+      background: #c8bc9a; border: 1px solid #b8ac8a;
       display: flex; align-items: center; justify-content: center;
       cursor: pointer; opacity: 0; transition: all 0.15s ease;
       z-index: 2;
     }
 
-    .copy-btn svg { width: 13px; height: 13px; stroke: var(--text-secondary); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .copy-btn svg { width: 12px; height: 12px; stroke: #6a5a4a; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
     .msg-wrapper:hover .copy-btn { opacity: 1; }
-    .copy-btn:hover { background: var(--white); border-color: var(--purple); }
-    .copy-btn:hover svg { stroke: var(--purple); }
-    .copy-btn.copied { background: rgba(6,212,174,0.1); border-color: rgba(6,212,174,0.3); }
-    .copy-btn.copied svg { stroke: var(--green); }
+    .copy-btn:hover { background: #d8d0be; border-color: #a89878; }
+    .copy-btn:hover svg { stroke: #3a2a1a; }
+    .copy-btn.copied { background: rgba(74,138,74,0.15); border-color: rgba(74,138,74,0.3); }
+    .copy-btn.copied svg { stroke: #4a8a4a; }
 
-    .typing-indicator { display: inline-flex; gap: 5px; padding: 16px 20px; align-items: center; }
+    .typing-indicator { display: inline-flex; gap: 5px; padding: 14px 18px; align-items: center; }
 
     .typing-indicator span {
-      width: 7px; height: 7px; background: var(--purple); border-radius: 50%;
+      width: 6px; height: 6px; background: #8a7a5a; border-radius: 50%;
       animation: typingBounce 1.4s ease-in-out infinite;
     }
 
@@ -641,45 +1271,47 @@
 
     @keyframes typingBounce {
       0%,60%,100% { opacity: 0.2; transform: translateY(0); }
-      30% { opacity: 0.8; transform: translateY(-5px); }
+      30% { opacity: 0.8; transform: translateY(-4px); }
     }
 
-    .input-area { padding: 0 32px 28px; max-width: 720px; margin: 0 auto; width: 100%; background: var(--bg); }
+    .input-area { padding: 0 28px 20px; max-width: 680px; margin: 0 auto; width: 100%; background: #ece5d5; }
 
     .input-container {
-      background: var(--white); border: 1.5px solid var(--border); border-radius: 18px;
-      padding: 8px 8px 8px 20px; display: flex; align-items: flex-end; gap: 8px;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      background: #d8d0be; border: 2px solid #c8bc9a; border-radius: 10px;
+      padding: 6px 6px 6px 16px; display: flex; align-items: flex-end; gap: 6px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 2px 0 #b8ac8a;
     }
 
     .input-container:focus-within {
-      border-color: var(--purple);
-      box-shadow: 0 0 0 3px var(--purple-soft), 0 4px 24px rgba(106,40,234,0.06);
+      border-color: #a89878;
+      box-shadow: 0 2px 0 #98886a, 0 0 0 2px rgba(168,152,120,0.2);
     }
 
     .input-container textarea {
       flex: 1; border: none; background: transparent; resize: none;
-      height: 24px; max-height: 120px; font-family: 'DM Sans', sans-serif;
-      font-size: 14.5px; color: var(--text); outline: none; padding: 8px 0; line-height: 1.5;
+      height: 24px; max-height: 100px; font-family: 'DM Sans', sans-serif;
+      font-size: 13.5px; color: #3a2a1a; outline: none; padding: 7px 0; line-height: 1.5;
     }
 
-    .input-container textarea::placeholder { color: var(--text-secondary); }
+    .input-container textarea::placeholder { color: #8a7a6a; }
 
     .send-btn {
-      width: 40px; height: 40px; border-radius: 14px; border: none;
-      background: var(--purple); color: var(--white); cursor: pointer;
+      width: 36px; height: 36px; border-radius: 8px; border: 2px solid #4a4a62;
+      background: #3a3a52; color: #e8e0d0; cursor: pointer;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(106,40,234,0.25);
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 0 #2a2a3f;
     }
 
-    .send-btn:hover { background: var(--purple-dark); box-shadow: 0 4px 20px rgba(106,40,234,0.35); transform: translateY(-1px); }
-    .send-btn:active { transform: scale(0.95) translateY(0); }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+    .send-btn:hover { background: #4a4a62; box-shadow: 0 1px 0 #2a2a3f; transform: translateY(1px); }
+    .send-btn:active { transform: scale(0.95) translateY(1px); }
+    .send-btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; box-shadow: 0 2px 0 #2a2a3f; }
 
     .send-btn.loading svg { display: none; }
     .send-btn.loading::after {
-      content: ''; width: 18px; height: 18px;
-      border: 2.5px solid rgba(255,255,255,0.3); border-top-color: white;
+      content: ''; width: 16px; height: 16px;
+      border: 2px solid rgba(232,224,208,0.3); border-top-color: #e8e0d0;
       border-radius: 50%; animation: spin 0.6s linear infinite;
     }
 
@@ -687,125 +1319,393 @@
 
     .retry-btn {
       display: inline-flex; align-items: center; gap: 6px;
-      padding: 8px 16px; border-radius: 10px;
-      background: none; border: 1px solid var(--border);
-      color: var(--purple); font-family: 'DM Sans', sans-serif;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      transition: all 0.2s ease;
+      padding: 7px 14px; border-radius: 6px;
+      background: #d8d0be; border: 2px solid #c8bc9a;
+      color: #5a4a3a; font-family: 'DM Sans', sans-serif;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: all 0.15s ease;
+      box-shadow: 0 2px 0 #b8ac8a;
     }
 
     .retry-btn:hover {
-      background: var(--purple-soft); border-color: var(--purple);
-      box-shadow: 0 2px 12px rgba(106,40,234,0.1);
+      background: #c8bc9a; border-color: #a89878;
+      box-shadow: 0 1px 0 #98886a; transform: translateY(1px);
     }
 
     .retry-btn svg {
-      width: 14px; height: 14px; stroke: currentColor; fill: none;
+      width: 13px; height: 13px; stroke: currentColor; fill: none;
       stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
     }
 
     .send-btn svg {
-      width: 18px; height: 18px; fill: none; stroke: currentColor;
-      stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+      width: 16px; height: 16px; fill: none; stroke: currentColor;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
     }
 
-    .input-hint { text-align: center; font-size: 11px; color: var(--text-secondary); opacity: 0.45; margin-top: 10px; }
+    .input-hint { text-align: center; font-size: 10px; color: #8a7a6a; opacity: 0.6; margin-top: 8px; }
 
     /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .side-nav { width: 60px; }
+      .side-icon { width: 36px; height: 36px; font-size: 16px; }
+      .side-label { font-size: 5px; }
+      .desk-row { gap: 16px; }
+      .desk-table { width: 100px; }
+      .bookshelf, .filing-cabinet, .water-cooler { display: none; }
+      .whiteboard .wb-frame { width: 180px; height: 52px; }
+      .lounge-area { gap: 14px; }
+      .couch-back { width: 90px; }
+      .couch-seat { width: 100px; }
+      .couch-legs { width: 90px; }
+    }
+
     @media (max-width: 768px) {
-      .hub-page { padding: 32px 16px 60px; }
-      .hub-header h1 { font-size: 28px; }
-      .agent-grid { grid-template-columns: 1fr; }
+      .room-scene { padding: 20px 12px 0; }
+      .banner-frame h1 { font-size: 13px; }
+      .banner-frame { padding: 10px 24px; }
+      .side-nav { display: none; }
+      .desk-area { padding: 8px 0 0; }
+      .desk-row { flex-direction: column; align-items: center; gap: 12px; }
+      .desk-row.back, .desk-row.front { transform: scale(1); margin-bottom: 0; }
+      .room-floor { height: 80px; }
+      .pixel-char { width: 52px; height: 60px; }
+      .desk-table { width: 100px; height: 16px; }
+      .desk-name { font-size: 8px; }
+      .whiteboard { display: none; }
+      .lounge-area { display: none; }
+      .rug { display: none; }
+
+      .browser-window {
+        width: 100vw !important; height: 100vh !important;
+        left: 0 !important; top: 0 !important;
+        max-width: none; max-height: none;
+        border-radius: 0;
+      }
+      .win-resize { display: none; }
+
+      .browser-toolbar { padding: 10px 12px; }
 
       .sidebar {
-        position: fixed; left: -280px; top: 0; height: 100vh; z-index: 100;
-        transition: left 0.3s cubic-bezier(0.16,1,0.3,1);
+        position: fixed; left: 0; top: 0; height: 100vh; z-index: 100;
+        width: 260px;
+        transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+        transform: translateX(0);
       }
-      .sidebar.open { left: 0; }
+      .sidebar.collapsed { 
+        transform: translateX(-100%);
+        width: 260px; border-right: 2px solid #a89878;
+      }
+      .sidebar.collapsed .sidebar-header,
+      .sidebar.collapsed .session-list,
+      .sidebar.collapsed .sidebar-footer {
+        opacity: 1; pointer-events: auto;
+      }
       .sidebar-overlay {
         display: none; position: fixed; inset: 0;
         background: rgba(2,0,68,0.5); backdrop-filter: blur(4px); z-index: 99;
       }
-      .sidebar.open ~ .sidebar-overlay { display: block; }
-      .sidebar-toggle { display: flex; }
+      .sidebar:not(.collapsed) ~ .sidebar-overlay { display: block; }
       .messages-inner, .input-area { padding-left: 16px; padding-right: 16px; }
+    }
+    /* ════════════════════════════════
+       AUTH GATE
+       ════════════════════════════════ */
+    #authGate {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #d4c8a8;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column;
+    }
+    #authGate.hidden { display: none; }
+
+    .auth-card {
+      background: #ece5d5; border: 3px solid #a89878;
+      border-radius: 14px; padding: 40px 44px; text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.04);
+      max-width: 380px; width: 90%;
+    }
+    .auth-card .auth-logo {
+      width: 56px; height: 56px; background: #3a3a52; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Press Start 2P', monospace; font-size: 20px; color: #e8e0d0;
+      margin: 0 auto 20px; box-shadow: 0 3px 0 #2a2a3f; border: 2px solid #4a4a62;
+    }
+    .auth-card h1 {
+      font-family: 'Press Start 2P', monospace; font-size: 14px;
+      color: #3a2a1a; margin: 0 0 8px; line-height: 1.6;
+    }
+    .auth-card .auth-subtitle {
+      font-family: 'DM Sans', sans-serif; font-size: 14px;
+      color: #7a6a5a; margin: 0 0 28px;
+    }
+    .auth-google-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 12px 28px; border-radius: 8px;
+      background: #fff; border: 2px solid #d0d0d0;
+      font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+      color: #3a3a3a; cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: all 0.15s ease;
+    }
+    .auth-google-btn:hover { border-color: #aaa; box-shadow: 0 3px 10px rgba(0,0,0,0.12); transform: translateY(-1px); }
+    .auth-google-btn:active { transform: translateY(0); }
+    .auth-google-btn svg { width: 20px; height: 20px; }
+    .auth-error {
+      margin-top: 16px; font-family: 'DM Sans', sans-serif;
+      font-size: 13px; color: #c44a3a;
+    }
+    .auth-error.hidden { display: none; }
+
+    /* User pill in hub */
+    .user-pill {
+      position: fixed; top: 14px; right: 18px; z-index: 450;
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(60,50,30,0.7); backdrop-filter: blur(8px);
+      padding: 6px 14px 6px 8px; border-radius: 20px;
+      font-family: 'DM Sans', sans-serif; font-size: 12px; color: #e8e0d0;
+      cursor: default;
+    }
+    .user-pill img {
+      width: 24px; height: 24px; border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+    .user-pill .user-name { opacity: 0.9; }
+    .user-pill .sign-out-btn {
+      background: none; border: none; color: rgba(255,255,255,0.5);
+      font-family: 'DM Sans', sans-serif; font-size: 11px; cursor: pointer;
+      padding: 0; margin-left: 4px;
+    }
+    .user-pill .sign-out-btn:hover { color: #fff; }
+
+    /* Theme switcher */
+    .theme-switcher {
+      position: fixed;
+      top: 14px;
+      left: 18px;
+      z-index: 460;
+      display: flex;
+      gap: 6px;
+      padding: 6px;
+      border-radius: 999px;
+      background: rgba(20, 16, 48, 0.64);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(8px);
+    }
+    .theme-btn {
+      border: 1px solid transparent;
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: rgba(255,255,255,0.82);
+      background: transparent;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .theme-btn:hover {
+      color: #fff;
+      border-color: rgba(255,255,255,0.25);
+      background: rgba(255,255,255,0.08);
+    }
+    .theme-btn.active {
+      color: #1f1b2f;
+      background: #f4f1ea;
+      border-color: rgba(255,255,255,0.55);
+    }
+
+    /* Classy mode overrides */
+    body[data-theme="classy"] {
+      background: #151728;
+      color: #eef1f7;
+    }
+    body[data-theme="classy"] #hubView {
+      background:
+        radial-gradient(circle at 12% 8%, rgba(138, 169, 255, 0.18), transparent 32%),
+        radial-gradient(circle at 85% 4%, rgba(111, 223, 188, 0.1), transparent 28%),
+        linear-gradient(180deg, #111425 0%, #151728 100%);
+    }
+    body[data-theme="classy"] .room-scene {
+      filter: saturate(0.72) contrast(1.04) brightness(0.97);
+    }
+    body[data-theme="classy"] .banner-frame {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.22);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.25);
+    }
+    body[data-theme="classy"] .banner-frame h1 {
+      font-family: 'Outfit', sans-serif;
+      letter-spacing: 0.06em;
+      color: #f2f5ff;
+      text-transform: uppercase;
+    }
+    body[data-theme="classy"] .room-subtitle {
+      color: rgba(226,234,255,0.82);
+      font-family: 'Outfit', sans-serif;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11px;
+    }
+    body[data-theme="classy"] .desk-name,
+    body[data-theme="classy"] .side-label,
+    body[data-theme="classy"] .furniture-label {
+      font-family: 'Outfit', sans-serif;
+      letter-spacing: 0.04em;
+    }
+    body[data-theme="classy"] .desk-role,
+    body[data-theme="classy"] .desk-status {
+      font-family: 'DM Sans', sans-serif;
+      letter-spacing: 0.02em;
+    }
+    body[data-theme="classy"] .auth-card {
+      background: #1f243a;
+      border-color: #323853;
+      box-shadow: 0 16px 36px rgba(0,0,0,0.38);
+    }
+    body[data-theme="classy"] .auth-card .auth-logo {
+      background: #2d3350;
+      border-color: #46507a;
+      box-shadow: 0 3px 0 #212844;
+      color: #f0f3fc;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+    }
+    body[data-theme="classy"] .auth-card h1 {
+      color: #f0f3fc;
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      line-height: 1.2;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+    body[data-theme="classy"] .auth-card .auth-subtitle {
+      color: #bac3de;
+    }
+    body[data-theme="classy"] .user-pill,
+    body[data-theme="classy"] .theme-switcher {
+      background: rgba(25, 28, 46, 0.78);
+      border-color: rgba(167, 185, 238, 0.3);
+    }
+    body[data-theme="classy"] .theme-btn.active {
+      background: #dce7ff;
+      color: #121a33;
     }
   </style>
 </head>
 
-<body>
+<body data-theme="fun">
 
-  <!-- ════════ HUB VIEW ════════ -->
-  <div id="hubView" class="view visible">
-    <div class="hub-page">
-      <div class="hub-header">
-        <div class="hub-badge"><span class="dot"></span> All Systems Online</div>
-        <h1>Trainual Agent Hub</h1>
-        <p>Your AI-powered team for onboarding, training, and process management. Select an agent to start a conversation.</p>
-      </div>
-      <div id="hubCategories"></div>
-      <div id="hubPipeline"></div>
+  <!-- ════════ AUTH GATE ════════ -->
+  <div id="authGate">
+    <div class="auth-card">
+      <div class="auth-logo">T</div>
+      <h1>Agent Hub</h1>
+      <p class="auth-subtitle">Sign in with your Trainual account to continue</p>
+      <button class="auth-google-btn" id="googleSignIn">
+        <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"></path><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"></path><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"></path></svg>
+        Sign in with Google
+      </button>
+      <div class="auth-error hidden" id="authError"></div>
     </div>
   </div>
 
-  <!-- ════════ CHAT VIEW ════════ -->
-  <div id="chatView" class="view hidden">
-    <aside class="sidebar" id="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-brand">
-          <div class="sidebar-logo">T</div>
-          <span class="sidebar-brand-text">Trainual</span>
-        </div>
-        <button class="back-btn" id="backBtn">
-          <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
-          All Agents
-        </button>
-        <button class="new-chat-btn" id="newChatBtn">
-          <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
-          New chat
-          <span class="shortcut">&#8984;N</span>
-        </button>
-      </div>
-      <div class="session-list" id="sessionList"></div>
-      <div class="sidebar-footer">
-        <div class="sidebar-footer-text">
-          <span class="dot"></span> Connected to Trainual
-        </div>
-      </div>
-    </aside>
+  <!-- ════════ USER PILL ════════ -->
+  <div class="user-pill" id="userPill" style="display:none">
+    <img id="userAvatar" src="" alt="">
+    <span class="user-name" id="userName"></span>
+    <button class="sign-out-btn" id="signOutBtn">sign out</button>
+  </div>
 
-    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <!-- ════════ THEME SWITCHER ════════ -->
+  <div class="theme-switcher" id="themeSwitcher" style="display:none">
+    <button class="theme-btn active" data-theme="fun">Fun</button>
+    <button class="theme-btn" data-theme="classy">Classy</button>
+  </div>
 
-    <main class="chat-main">
-      <div class="topbar">
-        <button class="sidebar-toggle" id="sidebarToggle">
-          <svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>
-        </button>
-        <div class="topbar-agent">
-          <span class="topbar-agent-emoji" id="topbarEmoji"></span>
-          <div class="topbar-agent-info">
-            <div class="topbar-title" id="topbarTitle">New conversation</div>
-            <div class="topbar-role" id="topbarRole"></div>
+  <!-- ════════ HUB VIEW ════════ -->
+  <div id="hubView" class="view visible" style="visibility:hidden">
+    <div class="room-scene">
+
+      <!-- Title Banner -->
+      <div class="room-banner">
+        <div class="banner-frame">
+          <h1>Agent Hub</h1>
+        </div>
+        <div class="room-subtitle">click an agent to start chatting</div>
+      </div>
+
+      <!-- Whiteboard -->
+      <div class="whiteboard">
+        <div class="wb-frame">
+          <div class="wb-line" style="width:70%;background:#ea6a4a"></div>
+          <div class="wb-line" style="width:55%;background:#3a7aea"></div>
+          <div class="wb-line" style="width:80%;background:#4a8a4a"></div>
+          <div class="wb-line" style="width:40%;background:#ea8a2a"></div>
+          <div class="wb-line" style="width:65%;background:#6a3adc"></div>
+        </div>
+        <div class="wb-tray">
+          <div class="wb-marker" style="background:#ea4a4a"></div>
+          <div class="wb-marker" style="background:#3a7aea"></div>
+          <div class="wb-marker" style="background:#2a8a4a"></div>
+        </div>
+        <div class="furniture-label">whiteboard</div>
+      </div>
+
+      <!-- Room Body -->
+      <div class="room-body">
+
+        <!-- Left Nav -->
+        <div class="side-nav left" id="sideNavLeft"></div>
+
+        <!-- Desk Area -->
+        <div class="desk-area" id="deskArea"></div>
+
+        <!-- Right Nav -->
+        <div class="side-nav right" id="sideNavRight"></div>
+
+      </div>
+
+      <!-- Lounge Area -->
+      <div class="lounge-area">
+        <div class="side-table">
+          <div class="side-table-item">🍎</div>
+          <div class="side-table-top"></div>
+          <div class="side-table-leg" style="margin:0 auto"></div>
+        </div>
+        <div class="couch">
+          <div class="couch-back"></div>
+          <div class="couch-seat">
+            <div class="couch-cushion"></div>
+            <div class="couch-cushion"></div>
+          </div>
+          <div class="couch-legs">
+            <div class="couch-leg"></div>
+            <div class="couch-leg"></div>
           </div>
         </div>
-        <div class="topbar-session-id" id="topbarSessionId"></div>
-      </div>
-
-      <div class="messages" id="messages">
-        <div class="messages-inner" id="messagesInner"></div>
-      </div>
-
-      <div class="input-area">
-        <div class="input-container">
-          <textarea id="input" placeholder="Ask a question..." rows="1"></textarea>
-          <button class="send-btn" id="sendBtn">
-            <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-          </button>
+        <div class="side-table">
+          <div class="side-table-item">☕</div>
+          <div class="side-table-top"></div>
+          <div class="side-table-leg" style="margin:0 auto"></div>
         </div>
-        <div class="input-hint">Enter to send &middot; Shift+Enter for new line</div>
       </div>
-    </main>
+      <div class="rug" style="margin:0 auto"></div>
+      <div class="furniture-label" style="margin:0 auto 8px">lounge</div>
+
+      <!-- Checkered Floor -->
+      <div class="room-floor">
+        <div class="floor-plants">
+          <span class="floor-plant">🌳</span>
+          <span class="floor-plant">🌳</span>
+        </div>
+      </div>
+
+    </div>
   </div>
+
+  <!-- ════════ WINDOW CONTAINER ════════ -->
+  <div id="windowContainer"></div>
 
   <script>
     // ═══════════════════════════════════════
@@ -813,45 +1713,22 @@
     // ═══════════════════════════════════════
     var AGENTS = [
       {
-        category: "Product", categoryIcon: "\uD83D\uDCCB",
+        category: "Industry Experts", categoryIcon: "\uD83C\uDFED",
+        agents: [
+          { id: "forge", name: "Forge", emoji: "\uD83D\uDD28", role: "Commercial Construction", desc: "Learn how GCs and subs operate, their tech stack, and how to create content that resonates.", capabilities: ["Industry education & fluency", "Competitive intelligence", "Vertical content & copywriting"], frequency: "Always on", badgeColor: "orange", webhook: "https://trainual.app.n8n.cloud/webhook/5fd046e3-f605-4d7b-8570-5636b7b34f40/chat", chips: ["What does a superintendent actually do all day?", "What software do construction companies already use?"] },
+          { id: "lex", name: "Lex", emoji: "\u2696\uFE0F", role: "Personal Injury Law", desc: "Learn how PI firms operate as businesses, their tools, and how to speak their language.", capabilities: ["Industry education & fluency", "Competitive intelligence", "Vertical content & copywriting"], frequency: "Always on", badgeColor: "navy", webhook: "https://trainual.app.n8n.cloud/webhook/ce6a4212-917e-4c19-a5b3-c6ce718d2778/chat", chips: ["What keeps a PI managing partner up at night?", "What's a demand package and why should I know?"] },
+          { id: "flux", name: "Flux", emoji: "\uD83D\uDD27", role: "HVAC & Plumbing", desc: "Learn how service companies run, the tech shortage crisis, and how to write for trade operators.", capabilities: ["Industry education & fluency", "Competitive intelligence", "Vertical content & copywriting"], frequency: "Always on", badgeColor: "steel", webhook: "https://trainual.app.n8n.cloud/webhook/ffc6c367-1ff8-4ec7-86f3-090eb2fc0e85/chat", chips: ["How does dispatch actually work at an HVAC company?", "What's flat-rate pricing and why does it matter?"] },
+          { id: "pulse", name: "Pulse", emoji: "\uD83C\uDFE5", role: "Ambulatory Health", desc: "Learn how clinics and practices operate, HIPAA basics, and where Trainual fits in healthcare.", capabilities: ["Industry education & fluency", "Competitive intelligence", "Vertical content & copywriting"], frequency: "Always on", badgeColor: "teal", webhook: "https://trainual.app.n8n.cloud/webhook/15295f33-00ea-4d4b-b0f3-eaea9129bc97/chat", chips: ["What does a practice administrator actually do?", "How is Trainual different from HealthStream?"] }
+        ]
+      },
+      {
+        category: "Utilities", categoryIcon: "\uD83D\uDEE0\uFE0F",
         agents: [
           { id: "scout", name: "Scout", emoji: "\uD83D\uDD0D", role: "Product Feedback", desc: "Knowledge of feedback submitted for product features.", capabilities: ["Weekly Feature Requests", "Feature-specific issues", "Feature tracking & check-ins"], frequency: "Always on", badgeColor: "green", webhook: "https://trainual.app.n8n.cloud/webhook/3d55d6c4-dd85-4160-99be-df6c47a7c27c/chat", chips: ["Share highlights of feedback in the last week", "What is the most common feature request"] },
-          { id: "sage", name: "Sage", emoji: "\uD83D\uDCDA", role: "Knowledge Base Expert", desc: "Instantly finds and explains any SOP, policy, or training document.", capabilities: ["Full Trainual content search", "Plain-language explanations", "Source linking & citations"], frequency: "Always on", badgeColor: "green", webhook: "", chips: [] },
-          { id: "coach", name: "Coach", emoji: "\uD83C\uDFAF", role: "Training Assessor", desc: "Creates quizzes and assessments to verify training completion and comprehension.", capabilities: ["Auto-generated assessments", "Competency scoring", "Knowledge gap reports"], frequency: "On demand", badgeColor: "purple", webhook: "", chips: [] }
-        ]
-      },
-      {
-        category: "Process & Compliance", categoryIcon: "\u2699\uFE0F",
-        agents: [
-          { id: "warden", name: "Warden", emoji: "\uD83D\uDEE1\uFE0F", role: "Compliance Monitor", desc: "Tracks training completion rates and flags compliance gaps across teams.", capabilities: ["Completion rate dashboards", "Overdue training alerts", "Compliance audit reports"], frequency: "Daily", badgeColor: "blue", webhook: "", chips: [] },
-          { id: "quill", name: "Quill", emoji: "\u270D\uFE0F", role: "SOP Writer", desc: "Helps draft, refine, and format standard operating procedures from scratch.", capabilities: ["SOP drafting from prompts", "Brand voice adherence", "Template formatting"], frequency: "On demand", badgeColor: "purple", webhook: "", chips: [] },
-          { id: "prism", name: "Prism", emoji: "\uD83D\uDCCA", role: "Analytics Reporter", desc: "Generates training analytics, engagement metrics, and team progress reports.", capabilities: ["Weekly engagement reports", "Team progress breakdowns", "Trend analysis & insights"], frequency: "Weekly", badgeColor: "yellow", webhook: "", chips: [] }
-        ]
-      },
-      {
-        category: "Support & Operations", categoryIcon: "\uD83D\uDE80",
-        agents: [
-          { id: "herald", name: "Herald", emoji: "\uD83D\uDCE3", role: "Update Broadcaster", desc: "Drafts and distributes announcements when SOPs or policies are updated.", capabilities: ["Change summary generation", "Multi-channel distribution", "Acknowledgment tracking"], frequency: "On change", badgeColor: "pink", webhook: "", chips: [] },
-          { id: "morgan", name: "Morgan", emoji: "\uD83D\uDDC2\uFE0F", role: "Process Manager", desc: "Keeps your Trainual content organized, identifies gaps, and suggests improvements.", capabilities: ["Content health audits", "Gap identification", "Structure recommendations"], frequency: "Bi-weekly", badgeColor: "blue", webhook: "", chips: [] },
-          { id: "ember", name: "Ember", emoji: "\uD83D\uDCAC", role: "Employee Assistant", desc: "General-purpose helper that answers any question about company processes and culture.", capabilities: ["Natural Q&A interface", "Role-aware responses", "Escalation to managers"], frequency: "Always on", badgeColor: "green", webhook: "", chips: [] }
+          { id: "quill", name: "Quill", emoji: "\u270D\uFE0F", role: "SOP Writer", desc: "Helps draft, refine, and format standard operating procedures from scratch.", capabilities: ["SOP drafting from prompts", "Brand voice adherence", "Template formatting"], frequency: "On demand", badgeColor: "purple", webhook: "", chips: ["Help me write an SOP for employee onboarding", "Draft a process doc for handling returns"] }
         ]
       }
     ];
-
-    var PIPELINE = {
-      label: "Onboarding Pipeline Flow",
-      nodes: [ { emoji: "\uD83D\uDD0D", name: "Scout" }, { emoji: "\uD83D\uDCDA", name: "Sage" }, { emoji: "\uD83C\uDFAF", name: "Coach" }, { emoji: "\uD83D\uDEE1\uFE0F", name: "Warden" }, { emoji: "\uD83D\uDCE3", name: "Herald" } ],
-      steps: ["Welcome", "Learn SOPs", "Assess", "Verify Compliance", "Announce"]
-    };
-
-    // ═══════════════════════════════════════
-    // STATE
-    // ═══════════════════════════════════════
-    var STORAGE_KEY = "trainual_sessions";
-    var currentAgent = null;
-    var sessions = [];
-    var activeSessionId = null;
-    var isSending = false;
 
     // Flatten agents for lookup
     var agentMap = {};
@@ -860,143 +1737,393 @@
     });
 
     // ═══════════════════════════════════════
-    // DOM
+    // WINDOW MANAGER STATE
     // ═══════════════════════════════════════
-    var hubView = document.getElementById('hubView');
-    var chatView = document.getElementById('chatView');
-    var messagesEl = document.getElementById('messages');
-    var messagesInner = document.getElementById('messagesInner');
-    var inputEl = document.getElementById('input');
-    var sendBtn = document.getElementById('sendBtn');
-    var sessionListEl = document.getElementById('sessionList');
-    var topbarTitle = document.getElementById('topbarTitle');
-    var topbarRole = document.getElementById('topbarRole');
-    var topbarEmoji = document.getElementById('topbarEmoji');
-    var topbarSessionId = document.getElementById('topbarSessionId');
-    var newChatBtn = document.getElementById('newChatBtn');
-    var backBtn = document.getElementById('backBtn');
-    var sidebar = document.getElementById('sidebar');
-    var sidebarToggle = document.getElementById('sidebarToggle');
-    var sidebarOverlay = document.getElementById('sidebarOverlay');
+    var STORAGE_KEY = "trainual_sessions";
+    var openWindows = {};
+    var windowZIndex = 600;
+    var cascadeIndex = 0;
+    var CASCADE_OFFSET = 32;
+    var TIMEOUT_MS = 180000;
 
-    // ═══════════════════════════════════════
-    // VIEW SWITCHING
-    // ═══════════════════════════════════════
-    function showHub() {
-      chatView.classList.remove('visible');
-      chatView.classList.add('hidden');
-      hubView.classList.remove('hidden');
-      hubView.classList.add('visible');
-      currentAgent = null;
-      document.title = 'Trainual Agent Hub';
-    }
-
-    function showChat(agentId) {
-      var agent = agentMap[agentId];
-      if (!agent || !agent.webhook) return;
-
-      currentAgent = agent;
-      document.title = agent.name + ' — Trainual';
-      inputEl.placeholder = 'Ask ' + agent.name + ' anything...';
-
-      // Load sessions for this agent
-      sessions = loadSessions(agent.id);
-      activeSessionId = null;
-
-      // Update topbar
-      topbarEmoji.textContent = agent.emoji;
-      topbarRole.textContent = agent.role;
-
-      hubView.classList.remove('visible');
-      hubView.classList.add('hidden');
-      chatView.classList.remove('hidden');
-      chatView.classList.add('visible');
-
-      renderSessionList();
-      if (sessions.length > 0) {
-        switchToSession(sessions[0].id);
-      } else {
-        renderEmptyState();
-      }
-
-      inputEl.focus();
-    }
+    // Configure marked
+    marked.setOptions({ breaks: true, gfm: true });
+    var renderer = new marked.Renderer();
+    renderer.link = function(href, title, text) {
+      if (typeof href === 'object') { title = href.title; text = href.text; href = href.href; }
+      var titleAttr = title ? ' title="' + title + '"' : '';
+      return '<a href="' + href + '"' + titleAttr + ' target="_blank" rel="noopener noreferrer">' + text + '</a>';
+    };
+    marked.setOptions({ renderer: renderer });
 
     // ═══════════════════════════════════════
-    // SESSION MANAGEMENT (per-agent)
+    // UTILITIES
     // ═══════════════════════════════════════
-    function storageKey(agentId) { return STORAGE_KEY + '_' + agentId; }
-
+    function escapeHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
     function generateId() { return 'sess_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+    function renderMarkdown(text) { try { return marked.parse(text); } catch (e) { return escapeHtml(text); } }
 
+    function storageKey(agentId) { return STORAGE_KEY + '_' + agentId; }
     function loadSessions(agentId) {
       try { return JSON.parse(localStorage.getItem(storageKey(agentId))) || []; }
       catch (e) { return []; }
     }
-
-    function saveSessions() {
-      if (!currentAgent) return;
-      localStorage.setItem(storageKey(currentAgent.id), JSON.stringify(sessions));
+    function saveSessions(win) {
+      localStorage.setItem(storageKey(win.agent.id), JSON.stringify(win.sessions));
     }
 
-    function createSession() {
+    // ═══════════════════════════════════════
+    // WINDOW CREATION
+    // ═══════════════════════════════════════
+    function showChat(agentId) {
+      // If window already open, bring to front
+      if (openWindows[agentId]) {
+        bringToFront(agentId);
+        return;
+      }
+
+      var agent = agentMap[agentId];
+      if (!agent || !agent.webhook) return;
+
+      // Calculate cascade position
+      var baseX = Math.max(60, (window.innerWidth - 580) / 2 - 100);
+      var baseY = Math.max(40, (window.innerHeight - 500) / 2 - 60);
+      var x = baseX + (cascadeIndex % 6) * CASCADE_OFFSET;
+      var y = baseY + (cascadeIndex % 6) * CASCADE_OFFSET;
+      cascadeIndex++;
+
+      // Build window DOM
+      var el = document.createElement('div');
+      el.className = 'browser-window focused';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.zIndex = ++windowZIndex;
+      el.style.setProperty('--agent-color', themeColor);
+
+      // Get agent theme color from PIXEL_CHARS
+      var pc = PIXEL_CHARS[agent.id] || PIXEL_CHARS.scout;
+      var themeColor = pc.color;
+
+      el.innerHTML =
+        '<div class="win-accent" style="background:' + themeColor + '"></div>' +
+        '<div class="browser-toolbar">' +
+          '<div class="browser-dots">' +
+            '<button class="browser-dot red" title="Close"></button>' +
+            '<button class="browser-dot yellow" title="Minimize"></button>' +
+            '<button class="browser-dot green" title="Maximize"></button>' +
+          '</div>' +
+          '<div class="toolbar-agent-badge" style="background:' + themeColor + '">' +
+            '<span class="badge-emoji">' + agent.emoji + '</span>' +
+            escapeHtml(agent.name) +
+          '</div>' +
+          '<div class="browser-url">' +
+            '<span class="browser-url-lock">&#x1F512;</span>' +
+            '<span class="browser-url-text">trainual-n8n-chat.pages.dev/chat/' + agent.id + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="browser-body">' +
+          '<div class="chat-view-inner">' +
+            '<aside class="sidebar">' +
+              '<div class="sidebar-header">' +
+                '<div class="sidebar-brand">' +
+                  '<div class="sidebar-logo">T</div>' +
+                  '<span class="sidebar-brand-text">Trainual</span>' +
+                '</div>' +
+                '<button class="new-chat-btn" style="background:' + themeColor + '">' +
+                  '<svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>' +
+                  ' New chat' +
+                '</button>' +
+              '</div>' +
+              '<div class="session-list"></div>' +
+              '<div class="sidebar-footer">' +
+                '<div class="sidebar-footer-text">' +
+                  '<span class="dot"></span> Connected to Trainual' +
+                '</div>' +
+              '</div>' +
+            '</aside>' +
+            '<div class="sidebar-overlay"></div>' +
+            '<main class="chat-main">' +
+              '<div class="topbar">' +
+                '<button class="sidebar-toggle">' +
+                  '<svg viewBox="0 0 24 24"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>' +
+                '</button>' +
+                '<div class="topbar-agent">' +
+                  '<span class="topbar-agent-emoji">' + agent.emoji + '</span>' +
+                  '<div class="topbar-agent-info">' +
+                    '<div class="topbar-title">' + escapeHtml(agent.name) + '</div>' +
+                    '<div class="topbar-role">' + escapeHtml(agent.role) + '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div class="topbar-session-id"></div>' +
+              '</div>' +
+              '<div class="messages"><div class="messages-inner"></div></div>' +
+              '<div class="input-area">' +
+                '<div class="input-container">' +
+                  '<textarea placeholder="Ask ' + escapeHtml(agent.name) + ' anything..." rows="1"></textarea>' +
+                  '<button class="send-btn">' +
+                    '<svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>' +
+                  '</button>' +
+                '</div>' +
+                '<div class="input-hint">Enter to send &middot; Shift+Enter for new line</div>' +
+              '</div>' +
+            '</main>' +
+          '</div>' +
+        '</div>' +
+        '<div class="win-resize"></div>';
+
+      document.getElementById('windowContainer').appendChild(el);
+
+      // Build window state
+      var win = {
+        el: el,
+        agent: agent,
+        sessions: loadSessions(agent.id),
+        activeSessionId: null,
+        isSending: false,
+        lastFailedText: null,
+        dom: {
+          toolbar: el.querySelector('.browser-toolbar'),
+          closeBtn: el.querySelector('.browser-dot.red'),
+          minBtn: el.querySelector('.browser-dot.yellow'),
+          maxBtn: el.querySelector('.browser-dot.green'),
+          sidebar: el.querySelector('.sidebar'),
+          sidebarOverlay: el.querySelector('.sidebar-overlay'),
+          sidebarToggle: el.querySelector('.sidebar-toggle'),
+          newChatBtn: el.querySelector('.new-chat-btn'),
+          sessionList: el.querySelector('.session-list'),
+          topbarTitle: el.querySelector('.topbar-title'),
+          topbarSessionId: el.querySelector('.topbar-session-id'),
+          messagesEl: el.querySelector('.messages'),
+          messagesInner: el.querySelector('.messages-inner'),
+          inputEl: el.querySelector('textarea'),
+          sendBtn: el.querySelector('.send-btn'),
+          resizeHandle: el.querySelector('.win-resize')
+        }
+      };
+
+      openWindows[agentId] = win;
+
+      // ── Wire events ──
+      wireWindowEvents(win);
+
+      // ── Init content ──
+      renderSessionList(win);
+      if (win.sessions.length > 0) {
+        switchToSession(win, win.sessions[0].id);
+      } else {
+        renderEmptyState(win);
+      }
+
+      // Unfocus others
+      Object.keys(openWindows).forEach(function(id) {
+        if (id !== agentId) openWindows[id].el.classList.remove('focused');
+      });
+
+      setTimeout(function() { win.dom.inputEl.focus(); }, 100);
+    }
+
+    // ═══════════════════════════════════════
+    // WINDOW EVENTS
+    // ═══════════════════════════════════════
+    function wireWindowEvents(win) {
+      var agentId = win.agent.id;
+
+      // Click to focus
+      win.el.addEventListener('mousedown', function() { bringToFront(agentId); });
+
+      // Close
+      win.dom.closeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        closeWindow(agentId);
+      });
+
+      // Minimize (toggle visibility)
+      win.dom.minBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        win.el.style.display = win.el.style.display === 'none' ? 'flex' : 'none';
+      });
+
+      // Maximize (toggle fullscreen-ish)
+      win.dom.maxBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (win.el.dataset.maximized === 'true') {
+          // Restore
+          win.el.style.left = win.el.dataset.restoreX;
+          win.el.style.top = win.el.dataset.restoreY;
+          win.el.style.width = win.el.dataset.restoreW;
+          win.el.style.height = win.el.dataset.restoreH;
+          win.el.dataset.maximized = 'false';
+        } else {
+          // Save current state
+          win.el.dataset.restoreX = win.el.style.left;
+          win.el.dataset.restoreY = win.el.style.top;
+          win.el.dataset.restoreW = win.el.style.width || '580px';
+          win.el.dataset.restoreH = win.el.style.height || '500px';
+          // Maximize
+          win.el.style.left = '20px';
+          win.el.style.top = '20px';
+          win.el.style.width = (window.innerWidth - 40) + 'px';
+          win.el.style.height = (window.innerHeight - 40) + 'px';
+          win.el.dataset.maximized = 'true';
+        }
+      });
+
+      // Drag
+      win.dom.toolbar.addEventListener('mousedown', function(e) {
+        if (e.target.closest('.browser-dot') || e.target.closest('.browser-url')) return;
+        e.preventDefault();
+        bringToFront(agentId);
+        var rect = win.el.getBoundingClientRect();
+        var offX = e.clientX - rect.left;
+        var offY = e.clientY - rect.top;
+        win.dom.toolbar.classList.add('dragging');
+
+        function onMove(e) {
+          win.el.style.left = Math.max(0, e.clientX - offX) + 'px';
+          win.el.style.top = Math.max(0, e.clientY - offY) + 'px';
+          if (win.el.dataset.maximized === 'true') {
+            win.el.style.width = win.el.dataset.restoreW;
+            win.el.style.height = win.el.dataset.restoreH;
+            win.el.dataset.maximized = 'false';
+          }
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          win.dom.toolbar.classList.remove('dragging');
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // Resize
+      win.dom.resizeHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        bringToFront(agentId);
+        var startX = e.clientX, startY = e.clientY;
+        var startW = win.el.offsetWidth, startH = win.el.offsetHeight;
+
+        function onMove(e) {
+          win.el.style.width = Math.max(380, startW + (e.clientX - startX)) + 'px';
+          win.el.style.height = Math.max(320, startH + (e.clientY - startY)) + 'px';
+        }
+        function onUp() {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // Sidebar toggle (collapsed by default)
+      win.dom.sidebar.classList.add('collapsed');
+      win.dom.sidebarToggle.addEventListener('click', function() {
+        win.dom.sidebar.classList.toggle('collapsed');
+      });
+      win.dom.sidebarOverlay.addEventListener('click', function() {
+        win.dom.sidebar.classList.add('collapsed');
+      });
+
+      // New chat
+      win.dom.newChatBtn.addEventListener('click', function() {
+        createSession(win);
+        renderSessionList(win);
+        win.dom.inputEl.focus();
+      });
+
+      // Send
+      win.dom.sendBtn.addEventListener('click', function() { sendMessage(win); });
+      win.dom.inputEl.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(win); }
+      });
+      win.dom.inputEl.addEventListener('input', function() {
+        win.dom.inputEl.style.height = '24px';
+        win.dom.inputEl.style.height = Math.min(win.dom.inputEl.scrollHeight, 120) + 'px';
+      });
+    }
+
+    function bringToFront(agentId) {
+      Object.keys(openWindows).forEach(function(id) {
+        openWindows[id].el.classList.remove('focused');
+      });
+      Object.keys(popupWindows).forEach(function(id) {
+        popupWindows[id].el.classList.remove('focused');
+      });
+      var win = openWindows[agentId];
+      if (!win) return;
+      win.el.style.zIndex = ++windowZIndex;
+      win.el.classList.add('focused');
+    }
+
+    function closeWindow(agentId) {
+      var win = openWindows[agentId];
+      if (!win) return;
+      win.el.classList.add('closing');
+      win.el.classList.remove('focused');
+      setTimeout(function() {
+        win.el.remove();
+        delete openWindows[agentId];
+      }, 200);
+    }
+
+    // ═══════════════════════════════════════
+    // SESSION MANAGEMENT (scoped per window)
+    // ═══════════════════════════════════════
+    function createSession(win) {
       var session = { id: generateId(), title: "New conversation", messages: [], createdAt: Date.now(), updatedAt: Date.now() };
-      sessions.unshift(session);
-      saveSessions();
-      switchToSession(session.id);
+      win.sessions.unshift(session);
+      saveSessions(win);
+      switchToSession(win, session.id);
       return session;
     }
 
-    function deleteSession(id, e) {
+    function deleteSession(win, id, e) {
       e.stopPropagation();
-      sessions = sessions.filter(function(s) { return s.id !== id; });
-      saveSessions();
-      if (activeSessionId === id) {
-        if (sessions.length > 0) switchToSession(sessions[0].id);
-        else { activeSessionId = null; renderEmptyState(); }
+      win.sessions = win.sessions.filter(function(s) { return s.id !== id; });
+      saveSessions(win);
+      if (win.activeSessionId === id) {
+        if (win.sessions.length > 0) switchToSession(win, win.sessions[0].id);
+        else { win.activeSessionId = null; renderEmptyState(win); }
       }
-      renderSessionList();
+      renderSessionList(win);
     }
 
-    function switchToSession(id) {
-      activeSessionId = id;
-      var session = sessions.find(function(s) { return s.id === id; });
+    function switchToSession(win, id) {
+      win.activeSessionId = id;
+      var session = win.sessions.find(function(s) { return s.id === id; });
       if (!session) return;
-      topbarTitle.textContent = session.title === 'New conversation' ? currentAgent.name : session.title;
-      topbarSessionId.textContent = session.id;
-      renderMessages(session);
-      renderSessionList();
-      closeSidebar();
+      win.dom.topbarTitle.textContent = session.title === 'New conversation' ? win.agent.name : session.title;
+      win.dom.topbarSessionId.textContent = session.id;
+      renderMessages(win, session);
+      renderSessionList(win);
     }
 
-    function getActiveSession() {
-      return sessions.find(function(s) { return s.id === activeSessionId; });
+    function getActiveSession(win) {
+      return win.sessions.find(function(s) { return s.id === win.activeSessionId; });
     }
 
-    function updateSessionTitle(session) {
+    function updateSessionTitle(win, session) {
       var first = session.messages.find(function(m) { return m.type === 'user'; });
       if (first) {
         session.title = first.text.length > 40 ? first.text.slice(0, 40) + '\u2026' : first.text;
-        topbarTitle.textContent = session.title;
+        win.dom.topbarTitle.textContent = session.title;
       }
     }
 
     // ═══════════════════════════════════════
-    // RENDERING — Chat
+    // RENDERING (scoped per window)
     // ═══════════════════════════════════════
-    function escapeHtml(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
-
-    function renderEmptyState() {
-      topbarTitle.textContent = currentAgent.name;
-      topbarSessionId.textContent = '';
-      messagesInner.innerHTML = '';
-      messagesInner.appendChild(createWelcome());
+    function renderEmptyState(win) {
+      win.dom.topbarTitle.textContent = win.agent.name;
+      win.dom.topbarSessionId.textContent = '';
+      win.dom.messagesInner.innerHTML = '';
+      win.dom.messagesInner.appendChild(createWelcome(win));
     }
 
-    function createWelcome() {
-      var agent = currentAgent;
+    function createWelcome(win) {
+      var agent = win.agent;
       var div = document.createElement('div');
-      div.className = 'welcome'; div.id = 'welcome';
+      div.className = 'welcome';
 
       var chipsHtml = '';
       if (agent.chips && agent.chips.length) {
@@ -1008,37 +2135,21 @@
       div.innerHTML = '<div class="welcome-icon">' + agent.emoji + '</div><h2>' + escapeHtml(agent.name) + '</h2><p>' + escapeHtml(agent.desc) + '</p>' + chipsHtml;
 
       div.querySelectorAll('.welcome-chip').forEach(function(chip) {
-        chip.addEventListener('click', function() { inputEl.value = chip.dataset.q; sendMessage(); });
+        chip.addEventListener('click', function() { win.dom.inputEl.value = chip.dataset.q; sendMessage(win); });
       });
       return div;
     }
 
-    function renderMessages(session) {
-      messagesInner.innerHTML = '';
-      if (session.messages.length === 0) messagesInner.appendChild(createWelcome());
-      else session.messages.forEach(function(msg) { addMessageBubble(msg.text, msg.type, false); });
-      scrollToBottom();
+    function renderMessages(win, session) {
+      win.dom.messagesInner.innerHTML = '';
+      if (session.messages.length === 0) win.dom.messagesInner.appendChild(createWelcome(win));
+      else session.messages.forEach(function(msg) { addMessageBubble(win, msg.text, msg.type, false); });
+      scrollToBottom(win);
     }
 
-    // Configure marked
-    marked.setOptions({ breaks: true, gfm: true });
-    var renderer = new marked.Renderer();
-    renderer.link = function(href, title, text) {
-      // Handle both old and new marked.js API
-      if (typeof href === 'object') { title = href.title; text = href.text; href = href.href; }
-      var titleAttr = title ? ' title="' + title + '"' : '';
-      return '<a href="' + href + '"' + titleAttr + ' target="_blank" rel="noopener noreferrer">' + text + '</a>';
-    };
-    marked.setOptions({ renderer: renderer });
-
-    function renderMarkdown(text) {
-      try { return marked.parse(text); }
-      catch (e) { return escapeHtml(text); }
-    }
-
-    function addMessageBubble(text, type, animate) {
+    function addMessageBubble(win, text, type, animate) {
       if (animate === undefined) animate = true;
-      var welcome = document.getElementById('welcome');
+      var welcome = win.dom.messagesInner.querySelector('.welcome');
       if (welcome) welcome.remove();
 
       if (type === 'bot') {
@@ -1055,7 +2166,6 @@
         mdContent.innerHTML = renderMarkdown(text);
         div.appendChild(mdContent);
 
-        // Copy button
         var copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.title = 'Copy to clipboard';
@@ -1074,236 +2184,1061 @@
 
         wrapper.appendChild(div);
         wrapper.appendChild(copyBtn);
-        messagesInner.appendChild(wrapper);
+        win.dom.messagesInner.appendChild(wrapper);
       } else {
         var div = document.createElement('div');
         div.className = 'message user';
         if (!animate) div.style.animation = 'none';
         div.textContent = text;
-        messagesInner.appendChild(div);
+        win.dom.messagesInner.appendChild(div);
       }
 
-      scrollToBottom();
+      scrollToBottom(win);
     }
 
-    function showTyping() {
+    function showTyping(win) {
       var div = document.createElement('div');
-      div.className = 'message bot typing-indicator'; div.id = 'typing';
+      div.className = 'message bot typing-indicator';
       div.innerHTML = '<span></span><span></span><span></span>';
-      messagesInner.appendChild(div); scrollToBottom();
+      win.dom.messagesInner.appendChild(div);
+      scrollToBottom(win);
     }
 
-    function removeTyping() { var el = document.getElementById('typing'); if (el) el.remove(); }
-    function scrollToBottom() { messagesEl.scrollTop = messagesEl.scrollHeight; }
+    function removeTyping(win) {
+      var el = win.dom.messagesInner.querySelector('.typing-indicator');
+      if (el) el.remove();
+    }
 
-    // Session list
-    function renderSessionList() {
-      sessionListEl.innerHTML = '';
-      if (sessions.length === 0) {
-        sessionListEl.innerHTML = '<div style="padding:24px 8px;text-align:center"><p style="font-size:12px;color:var(--eggplant-text);line-height:1.5">No conversations yet.<br>Start a new chat to begin.</p></div>';
+    function scrollToBottom(win) { win.dom.messagesEl.scrollTop = win.dom.messagesEl.scrollHeight; }
+
+    function renderSessionList(win) {
+      var el = win.dom.sessionList;
+      el.innerHTML = '';
+      if (win.sessions.length === 0) {
+        el.innerHTML = '<div style="padding:24px 8px;text-align:center"><p style="font-size:11px;color:#7a6a5a;line-height:1.5;font-family:DM Sans,sans-serif">No conversations yet.<br>Start a new chat to begin.</p></div>';
         return;
       }
       var now = Date.now(), today = [], yesterday = [], older = [];
-      sessions.forEach(function(s) {
+      win.sessions.forEach(function(s) {
         var age = now - s.updatedAt;
         if (age < 86400000) today.push(s);
         else if (age < 172800000) yesterday.push(s);
         else older.push(s);
       });
-      if (today.length) renderGroup("Today", today);
-      if (yesterday.length) renderGroup("Yesterday", yesterday);
-      if (older.length) renderGroup("Previous", older);
+      if (today.length) renderGroup(win, "Today", today);
+      if (yesterday.length) renderGroup(win, "Yesterday", yesterday);
+      if (older.length) renderGroup(win, "Previous", older);
     }
 
-    function renderGroup(label, items) {
+    function renderGroup(win, label, items) {
       var gl = document.createElement('div'); gl.className = 'session-group-label'; gl.textContent = label;
-      sessionListEl.appendChild(gl);
+      win.dom.sessionList.appendChild(gl);
       items.forEach(function(s) {
         var item = document.createElement('div');
-        item.className = 'session-item' + (s.id === activeSessionId ? ' active' : '');
+        item.className = 'session-item' + (s.id === win.activeSessionId ? ' active' : '');
         item.innerHTML = '<div class="session-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="session-info"><div class="session-title">' + escapeHtml(s.title) + '</div><div class="session-time">' + s.messages.length + ' message' + (s.messages.length !== 1 ? 's' : '') + '</div></div>';
         var del = document.createElement('button'); del.className = 'session-delete'; del.title = 'Delete';
         del.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>';
-        del.addEventListener('click', function(e) { deleteSession(s.id, e); });
+        del.addEventListener('click', function(e) { deleteSession(win, s.id, e); });
         item.appendChild(del);
-        item.addEventListener('click', function() { switchToSession(s.id); });
-        sessionListEl.appendChild(item);
+        item.addEventListener('click', function() { switchToSession(win, s.id); });
+        win.dom.sessionList.appendChild(item);
       });
     }
 
     // ═══════════════════════════════════════
-    // SENDING
+    // SENDING (scoped per window)
     // ═══════════════════════════════════════
-    var TIMEOUT_MS = 45000;
-    var lastFailedText = null;
-
-    function sendMessage(retryText) {
-      var text = retryText || inputEl.value.trim();
-      if (!text || isSending || !currentAgent) return;
-      if (!activeSessionId) createSession();
-      var session = getActiveSession();
+    function sendMessage(win, retryText) {
+      var text = retryText || win.dom.inputEl.value.trim();
+      if (!text || win.isSending) return;
+      if (!win.activeSessionId) createSession(win);
+      var session = getActiveSession(win);
       if (!session) return;
 
-      isSending = true; sendBtn.disabled = true;
-      sendBtn.classList.add('loading');
-      lastFailedText = null;
+      win.isSending = true;
+      win.dom.sendBtn.disabled = true;
+      win.dom.sendBtn.classList.add('loading');
+      win.lastFailedText = null;
 
-      // Remove any existing retry buttons
-      var oldRetry = document.querySelector('.retry-btn');
+      var oldRetry = win.dom.messagesInner.querySelector('.retry-btn');
       if (oldRetry) oldRetry.parentElement.remove();
 
       if (!retryText) {
         session.messages.push({ text: text, type: 'user' });
         session.updatedAt = Date.now();
-        updateSessionTitle(session); saveSessions(); renderSessionList();
-        addMessageBubble(text, 'user');
+        updateSessionTitle(win, session);
+        saveSessions(win);
+        renderSessionList(win);
+        addMessageBubble(win, text, 'user');
       }
-      inputEl.value = ''; inputEl.style.height = '24px';
-      showTyping();
+      win.dom.inputEl.value = '';
+      win.dom.inputEl.style.height = '24px';
+      showTyping(win);
 
-      // Timeout controller
       var controller = new AbortController();
       var timeoutId = setTimeout(function() { controller.abort(); }, TIMEOUT_MS);
 
-      fetch(currentAgent.webhook, {
+      fetch(win.agent.webhook, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatInput: text, sessionId: session.id, agent: currentAgent.id }),
+        body: JSON.stringify({ chatInput: text, sessionId: session.id, agent: win.agent.id }),
         signal: controller.signal
       }).then(function(res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
         return res.json();
       }).then(function(data) {
         clearTimeout(timeoutId);
-        removeTyping();
+        removeTyping(win);
         var botMessages = [];
         if (data && data.messages && data.messages.length) botMessages = data.messages.map(function(m) { return m.text; });
         else if (Array.isArray(data)) botMessages = data.map(function(m) { return m.output || m.text; }).filter(Boolean);
         else if (data && data.output) botMessages = [data.output];
-
-        if (botMessages.length === 0) {
-          botMessages = ["I received your message but couldn\u2019t generate a response. Try rephrasing your question."];
-        }
+        if (botMessages.length === 0) botMessages = ["I received your message but couldn\u2019t generate a response. Try rephrasing your question."];
 
         botMessages.forEach(function(t, i) {
           setTimeout(function() {
             session.messages.push({ text: t, type: 'bot' });
-            session.updatedAt = Date.now(); saveSessions();
-            addMessageBubble(t, 'bot');
+            session.updatedAt = Date.now();
+            saveSessions(win);
+            addMessageBubble(win, t, 'bot');
           }, i * 120);
         });
       }).catch(function(err) {
         clearTimeout(timeoutId);
-        removeTyping();
-        lastFailedText = text;
+        removeTyping(win);
+        win.lastFailedText = text;
         var errText = err.name === 'AbortError'
           ? "That took too long \u2014 the agent may be busy. Try again?"
-          : "Something went wrong connecting to " + currentAgent.name + ". Try again?";
-        session.messages.push({ text: errText, type: 'bot' }); saveSessions();
-        addMessageBubble(errText, 'bot');
-        addRetryButton();
+          : "Something went wrong connecting to " + win.agent.name + ". Try again?";
+        session.messages.push({ text: errText, type: 'bot' });
+        saveSessions(win);
+        addMessageBubble(win, errText, 'bot');
+        addRetryButton(win);
       }).finally(function() {
-        isSending = false; sendBtn.disabled = false;
-        sendBtn.classList.remove('loading');
-        inputEl.focus();
+        win.isSending = false;
+        win.dom.sendBtn.disabled = false;
+        win.dom.sendBtn.classList.remove('loading');
+        win.dom.inputEl.focus();
       });
     }
 
-    function addRetryButton() {
+    function addRetryButton(win) {
       var wrap = document.createElement('div');
       wrap.style.cssText = 'align-self:flex-start;animation:msgIn 0.3s cubic-bezier(0.16,1,0.3,1) both';
       var btn = document.createElement('button');
       btn.className = 'retry-btn';
       btn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 105.64-11.36L3 10"/></svg> Retry';
       btn.addEventListener('click', function() {
-        if (lastFailedText) sendMessage(lastFailedText);
+        if (win.lastFailedText) sendMessage(win, win.lastFailedText);
       });
       wrap.appendChild(btn);
-      messagesInner.appendChild(wrap);
-      scrollToBottom();
+      win.dom.messagesInner.appendChild(wrap);
+      scrollToBottom(win);
     }
 
     // ═══════════════════════════════════════
-    // RENDERING — Hub
+    // PIXEL CHARACTERS — cute blocky creatures
     // ═══════════════════════════════════════
-    function renderHub() {
-      var container = document.getElementById('hubCategories');
-      AGENTS.forEach(function(cat, ci) {
-        var section = document.createElement('div');
-        section.className = 'category';
-        section.style.animationDelay = (ci * 0.1) + 's';
-        section.innerHTML = '<div class="category-header"><span class="category-icon">' + cat.categoryIcon + '</span><span class="category-title">' + escapeHtml(cat.category) + '</span><span class="category-count">' + cat.agents.length + ' agent' + (cat.agents.length !== 1 ? 's' : '') + '</span></div>';
+    var PIXEL_CHARS = {
+      forge: {
+        color: '#d4820a',
+        nameColor: '#b86e00',
+        svg: '<svg viewBox="0 0 32 40"><rect x="8" y="4" width="16" height="14" rx="2" fill="#eaa02a"/><rect x="6" y="1" width="20" height="5" rx="1" fill="#f0b020"/><rect x="8" y="0" width="16" height="3" rx="1" fill="#e89010"/><rect x="12" y="9" width="3" height="3" fill="#1a1a0a"/><rect x="17" y="9" width="3" height="3" fill="#1a1a0a"/><rect x="12" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="17" y="9" width="1.5" height="1.5" fill="#fff"/><path d="M12 15 Q16 17.5 20 15" stroke="#8a5a00" stroke-width="1.2" fill="none"/><rect x="6" y="18" width="20" height="16" rx="2" fill="#d4820a"/><rect x="9" y="20" width="14" height="6" rx="1" fill="#c07000"/><rect x="11" y="21" width="10" height="1.5" fill="#e0a030"/><rect x="11" y="23.5" width="7" height="1.5" fill="#e0a030"/><rect x="2" y="20" width="5" height="10" rx="2" fill="#d4820a"/><rect x="25" y="20" width="5" height="10" rx="2" fill="#d4820a"/><rect x="8" y="34" width="6" height="4" rx="1" fill="#b06800"/><rect x="18" y="34" width="6" height="4" rx="1" fill="#b06800"/></svg>'
+      },
+      lex: {
+        color: '#2a3a6a',
+        nameColor: '#1a2a5a',
+        svg: '<svg viewBox="0 0 32 40"><rect x="8" y="4" width="16" height="14" rx="2" fill="#3a5a9a"/><rect x="10" y="1" width="12" height="5" rx="1" fill="#2a3a6a"/><rect x="14" y="0" width="4" height="3" fill="#3a5a9a"/><rect x="11" y="8" width="4" height="4" rx="1" fill="#e8e0f0" stroke="#2a3a6a" stroke-width="0.5"/><rect x="17" y="8" width="4" height="4" rx="1" fill="#e8e0f0" stroke="#2a3a6a" stroke-width="0.5"/><rect x="12" y="9" width="2" height="2" fill="#0a0a2a"/><rect x="18" y="9" width="2" height="2" fill="#0a0a2a"/><rect x="14" y="14" width="4" height="1.5" rx="0.5" fill="#1a2a5a"/><rect x="6" y="18" width="20" height="16" rx="2" fill="#2a3a6a"/><rect x="11" y="21" width="10" height="8" rx="1" fill="#1a2a5a"/><rect x="13" y="23" width="6" height="1" fill="#4a6aaa"/><rect x="13" y="25" width="4" height="1" fill="#4a6aaa"/><rect x="13" y="27" width="5" height="1" fill="#4a6aaa"/><rect x="2" y="20" width="5" height="10" rx="2" fill="#2a3a6a"/><rect x="25" y="20" width="5" height="10" rx="2" fill="#2a3a6a"/><rect x="8" y="34" width="6" height="4" rx="1" fill="#1a2a4a"/><rect x="18" y="34" width="6" height="4" rx="1" fill="#1a2a4a"/></svg>'
+      },
+      flux: {
+        color: '#5a7a8a',
+        nameColor: '#4a6a7a',
+        svg: '<svg viewBox="0 0 32 40"><rect x="8" y="4" width="16" height="14" rx="2" fill="#7a9aaa"/><rect x="6" y="3" width="6" height="4" rx="1" fill="#8aaaba"/><rect x="20" y="3" width="6" height="4" rx="1" fill="#8aaaba"/><rect x="12" y="9" width="3" height="3" fill="#0a1a2a"/><rect x="17" y="9" width="3" height="3" fill="#0a1a2a"/><rect x="12" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="17" y="9" width="1.5" height="1.5" fill="#fff"/><path d="M13 15 Q16 17 19 15" stroke="#3a5a6a" stroke-width="1.2" fill="none"/><rect x="6" y="18" width="20" height="16" rx="2" fill="#5a7a8a"/><rect x="10" y="20" width="12" height="10" rx="1" fill="#4a6a7a"/><rect x="12" y="22" width="3" height="6" rx="1" fill="#6a8a9a"/><rect x="17" y="22" width="3" height="6" rx="1" fill="#6a8a9a"/><rect x="2" y="20" width="5" height="10" rx="2" fill="#5a7a8a"/><rect x="25" y="20" width="5" height="10" rx="2" fill="#5a7a8a"/><rect x="8" y="34" width="6" height="4" rx="1" fill="#3a5a6a"/><rect x="18" y="34" width="6" height="4" rx="1" fill="#3a5a6a"/></svg>'
+      },
+      pulse: {
+        color: '#1a8a6a',
+        nameColor: '#0a7a5a',
+        svg: '<svg viewBox="0 0 32 40"><rect x="8" y="4" width="16" height="14" rx="2" fill="#2aaa8a"/><rect x="12" y="1" width="8" height="5" rx="1" fill="#1a8a6a"/><rect x="14" y="2" width="4" height="2" rx="0.5" fill="#fff"/><rect x="15" y="1" width="2" height="4" rx="0.5" fill="#fff"/><rect x="12" y="9" width="3" height="3" fill="#0a2a1a"/><rect x="17" y="9" width="3" height="3" fill="#0a2a1a"/><rect x="12" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="17" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="13" y="14" width="6" height="2" rx="1" fill="#0a6a4a"/><rect x="6" y="18" width="20" height="16" rx="2" fill="#1a8a6a"/><path d="M10 26 L13 26 L14 22 L16 30 L18 24 L19 26 L22 26" stroke="#4aeaca" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><rect x="2" y="20" width="5" height="10" rx="2" fill="#1a8a6a"/><rect x="25" y="20" width="5" height="10" rx="2" fill="#1a8a6a"/><rect x="8" y="34" width="6" height="4" rx="1" fill="#0a6a4a"/><rect x="18" y="34" width="6" height="4" rx="1" fill="#0a6a4a"/></svg>'
+      },
+      scout: {
+        color: '#3aaa6a',
+        nameColor: '#2a8a4a',
+        svg: '<svg viewBox="0 0 32 40"><rect x="8" y="4" width="16" height="14" rx="2" fill="#4ac47a"/><rect x="13" y="0" width="6" height="6" rx="1" fill="#6ae49a"/><circle cx="16" cy="1" r="2" fill="#3aaa6a"/><rect x="12" y="9" width="3" height="3" fill="#1a2a1a"/><rect x="17" y="9" width="3" height="3" fill="#1a2a1a"/><rect x="12" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="17" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="13" y="14" width="6" height="2" rx="1" fill="#2a7a3a"/><rect x="6" y="18" width="20" height="16" rx="2" fill="#3aaa6a"/><rect x="10" y="22" width="12" height="2" rx="1" fill="#2a8a4a"/><rect x="2" y="20" width="5" height="10" rx="2" fill="#3aaa6a"/><rect x="25" y="20" width="5" height="10" rx="2" fill="#3aaa6a"/><rect x="8" y="34" width="6" height="4" rx="1" fill="#2a8a4a"/><rect x="18" y="34" width="6" height="4" rx="1" fill="#2a8a4a"/></svg>'
+      },
+      quill: {
+        color: '#da4aaa',
+        nameColor: '#ca3a9a',
+        svg: '<svg viewBox="0 0 32 40"><rect x="8" y="4" width="16" height="14" rx="2" fill="#ea6aca"/><rect x="22" y="0" width="3" height="10" rx="1" fill="#faa0da" transform="rotate(15 23 5)"/><rect x="12" y="9" width="3" height="3" fill="#2a0a1a"/><rect x="17" y="9" width="3" height="3" fill="#2a0a1a"/><rect x="12" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="17" y="9" width="1.5" height="1.5" fill="#fff"/><rect x="13" y="14" width="6" height="2" rx="1" fill="#aa2a7a"/><rect x="6" y="18" width="20" height="16" rx="2" fill="#da4aaa"/><rect x="10" y="21" width="12" height="8" rx="1" fill="#ca3a9a"/><rect x="12" y="23" width="8" height="1" fill="#ea6aca"/><rect x="12" y="25" width="6" height="1" fill="#ea6aca"/><rect x="12" y="27" width="4" height="1" fill="#ea6aca"/><rect x="2" y="20" width="5" height="10" rx="2" fill="#da4aaa"/><rect x="25" y="20" width="5" height="10" rx="2" fill="#da4aaa"/><rect x="8" y="34" width="6" height="4" rx="1" fill="#aa2a7a"/><rect x="18" y="34" width="6" height="4" rx="1" fill="#aa2a7a"/></svg>'
+      }
+    };
 
-        var grid = document.createElement('div'); grid.className = 'agent-grid';
+    // Side navigation items
+    // ═══════════════════════════════════════
+    // SIDEBAR NAV ITEMS (with actions)
+    // ═══════════════════════════════════════
+    var SIDE_NAV_LEFT = [
+      { icon: '\uD83C\uDFE0', label: 'Home', action: function() { window.open('https://trainual.com', '_blank'); } },
+      { icon: '\uD83D\uDCD6', label: 'User\nGuide', action: function() { openUserGuide(); } },
+      { icon: '\uD83C\uDFB0', label: 'Slot\nMachine', action: function() { openSlotMachine(); } },
+      { icon: '\uD83D\uDDE3\uFE0F', label: 'Talk to\nHuman', action: function() { window.open('https://trainual.slack.com', '_blank'); } }
+    ];
 
-        cat.agents.forEach(function(agent, ai) {
-          var isActive = agent.webhook !== '';
-          var card = document.createElement('div');
-          card.className = 'agent-card' + (!isActive ? ' disabled' : '');
-          card.style.animation = 'fadeUp 0.5s ease both';
-          card.style.animationDelay = ((ci * 0.1) + (ai * 0.06)) + 's';
+    var SIDE_NAV_RIGHT = [
+      { icon: '\uD83D\uDCCB', label: 'Agent\nRoster', action: function() { openAgentRoster(); } },
+      { icon: '\uD83D\uDCA1', label: 'Tip of\nthe Day', action: function() { openTipOfDay(); } },
+      { icon: '\uD83C\uDFB5', label: 'Lo-fi\nRadio', action: function() { toggleRadio(); }, radioToggle: true },
+      { icon: '\uD83D\uDD79\uFE0F', label: 'Mini\nGame', action: function() { openMiniGame(); } }
+    ];
 
-          var capsList = agent.capabilities.map(function(c) { return '<li>' + escapeHtml(c) + '</li>'; }).join('');
+    // ═══════════════════════════════════════
+    // POPUP WINDOW SYSTEM
+    // ═══════════════════════════════════════
+    var popupWindows = {};
+    var popupCascade = 0;
 
-          card.innerHTML = '<div class="card-top"><div class="agent-avatar">' + agent.emoji + '</div><div class="card-top-info"><div class="agent-name">' + escapeHtml(agent.name) + '</div><div class="agent-role">' + escapeHtml(agent.role) + '</div></div><div class="agent-status"><span class="status-badge ' + agent.badgeColor + '">' + escapeHtml(agent.frequency) + '</span></div></div><div class="agent-desc">' + escapeHtml(agent.desc) + '</div><ul class="agent-capabilities">' + capsList + '</ul><div class="card-footer"><button class="chat-btn"' + (!isActive ? ' disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>' + (isActive ? 'Chat now' : 'Coming soon') + '</button><span class="card-meta">' + (isActive ? 'Ready' : 'In development') + '</span></div>';
+    function openPopup(id, title, emoji, color, contentFn) {
+      if (popupWindows[id]) {
+        popupWindows[id].el.style.zIndex = ++windowZIndex;
+        return popupWindows[id];
+      }
 
-          if (isActive) {
-            card.addEventListener('click', function() { showChat(agent.id); });
-          }
+      var baseX = Math.max(80, (window.innerWidth - 480) / 2 - 60);
+      var baseY = Math.max(60, (window.innerHeight - 440) / 2 - 40);
+      var x = baseX + (popupCascade % 4) * CASCADE_OFFSET;
+      var y = baseY + (popupCascade % 4) * CASCADE_OFFSET;
+      popupCascade++;
 
-          grid.appendChild(card);
-        });
+      var el = document.createElement('div');
+      el.className = 'browser-window focused';
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+      el.style.width = '480px';
+      el.style.height = '440px';
+      el.style.zIndex = ++windowZIndex;
+      el.style.setProperty('--agent-color', color);
 
-        section.appendChild(grid);
-        container.appendChild(section);
+      el.innerHTML =
+        '<div class="win-accent" style="background:' + color + '"></div>' +
+        '<div class="browser-toolbar">' +
+          '<div class="browser-dots">' +
+            '<button class="browser-dot red" title="Close"></button>' +
+            '<button class="browser-dot yellow" title="Minimize"></button>' +
+            '<button class="browser-dot green" title="Maximize"></button>' +
+          '</div>' +
+          '<div class="toolbar-agent-badge" style="background:' + color + '">' +
+            '<span class="badge-emoji">' + emoji + '</span>' +
+            escapeHtml(title) +
+          '</div>' +
+          '<div class="browser-url">' +
+            '<span class="browser-url-lock">&#x1F512;</span>' +
+            '<span class="browser-url-text">trainual-hub.app/' + id + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div class="popup-body" id="popup-' + id + '"></div>' +
+        '<div class="win-resize"></div>';
+
+      document.getElementById('windowContainer').appendChild(el);
+
+      var toolbar = el.querySelector('.browser-toolbar');
+      var closeBtn = el.querySelector('.browser-dot.red');
+      var minBtn = el.querySelector('.browser-dot.yellow');
+      var maxBtn = el.querySelector('.browser-dot.green');
+      var resizeHandle = el.querySelector('.win-resize');
+
+      // Focus
+      el.addEventListener('mousedown', function() {
+        Object.keys(popupWindows).forEach(function(k) { popupWindows[k].el.classList.remove('focused'); });
+        Object.keys(openWindows).forEach(function(k) { openWindows[k].el.classList.remove('focused'); });
+        el.style.zIndex = ++windowZIndex;
+        el.classList.add('focused');
       });
 
-      // Pipeline
-      if (PIPELINE) {
-        var pc = document.getElementById('hubPipeline');
-        var nodesHtml = PIPELINE.nodes.map(function(n, i) {
-          var html = '<span class="pipeline-node">' + n.emoji + ' ' + escapeHtml(n.name) + '</span>';
-          if (i < PIPELINE.nodes.length - 1) html += '<span class="pipeline-arrow">&rarr;</span>';
-          return html;
-        }).join('');
-        var stepsHtml = PIPELINE.steps.map(function(s, i) {
-          var html = '<span class="pipeline-step">' + escapeHtml(s) + '</span>';
-          if (i < PIPELINE.steps.length - 1) html += '<span class="pipeline-step-arrow">&rarr;</span>';
-          return html;
-        }).join('');
-        pc.innerHTML = '<div class="pipeline"><div class="pipeline-label">' + escapeHtml(PIPELINE.label) + '</div><div class="pipeline-flow">' + nodesHtml + '</div><div class="pipeline-steps">' + stepsHtml + '</div></div>';
+      // Close
+      closeBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        el.classList.add('closing');
+        el.classList.remove('focused');
+        setTimeout(function() { el.remove(); delete popupWindows[id]; }, 200);
+      });
+
+      // Minimize
+      minBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+      });
+
+      // Maximize
+      maxBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (el.dataset.maximized === 'true') {
+          el.style.left = el.dataset.restoreX;
+          el.style.top = el.dataset.restoreY;
+          el.style.width = el.dataset.restoreW;
+          el.style.height = el.dataset.restoreH;
+          el.dataset.maximized = 'false';
+        } else {
+          el.dataset.restoreX = el.style.left;
+          el.dataset.restoreY = el.style.top;
+          el.dataset.restoreW = el.style.width;
+          el.dataset.restoreH = el.style.height;
+          el.style.left = '20px'; el.style.top = '20px';
+          el.style.width = (window.innerWidth - 40) + 'px';
+          el.style.height = (window.innerHeight - 40) + 'px';
+          el.dataset.maximized = 'true';
+        }
+      });
+
+      // Drag
+      toolbar.addEventListener('mousedown', function(e) {
+        if (e.target.closest('.browser-dot') || e.target.closest('.browser-url')) return;
+        e.preventDefault();
+        var rect = el.getBoundingClientRect();
+        var offX = e.clientX - rect.left, offY = e.clientY - rect.top;
+        toolbar.classList.add('dragging');
+        function onMove(e) {
+          el.style.left = Math.max(0, e.clientX - offX) + 'px';
+          el.style.top = Math.max(0, e.clientY - offY) + 'px';
+          if (el.dataset.maximized === 'true') {
+            el.style.width = el.dataset.restoreW; el.style.height = el.dataset.restoreH;
+            el.dataset.maximized = 'false';
+          }
+        }
+        function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); toolbar.classList.remove('dragging'); }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      // Resize
+      resizeHandle.addEventListener('mousedown', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        var startX = e.clientX, startY = e.clientY;
+        var startW = el.offsetWidth, startH = el.offsetHeight;
+        function onMove(e) {
+          el.style.width = Math.max(340, startW + (e.clientX - startX)) + 'px';
+          el.style.height = Math.max(280, startH + (e.clientY - startY)) + 'px';
+        }
+        function onUp() { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+
+      popupWindows[id] = { el: el };
+      contentFn(el.querySelector('#popup-' + id));
+      return popupWindows[id];
+    }
+
+    // ═══════════════════════════════════════
+    // FEATURE: USER GUIDE
+    // ═══════════════════════════════════════
+    function openUserGuide() {
+      openPopup('guide', 'User Guide', '\uD83D\uDCD6', '#6a5adc', function(body) {
+        body.innerHTML =
+          '<h2>\uD83D\uDCD6 Agent Hub User Guide</h2>' +
+          '<div class="section">' +
+            '<h3>What is the Agent Hub?</h3>' +
+            '<p>The Agent Hub is your home base for Trainual\'s AI-powered industry experts. Each agent is a specialist in a specific vertical — trained on real operational knowledge, industry language, and competitive intelligence.</p>' +
+            '<p>Use these agents to get fluent fast in a new vertical, create authentic marketing content, or understand how target customers actually run their businesses.</p>' +
+          '</div>' +
+          '<hr class="divider">' +
+          '<div class="section">' +
+            '<h3>Meet Your Agents</h3>' +
+            '<div class="tip-box"><span class="tip-emoji">\uD83D\uDD28</span><strong>Forge</strong> — Commercial Construction. Knows GCs, subs, OSHA, toolbox talks, and how a 100-person contractor actually operates day to day.</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\u2696\uFE0F</span><strong>Lex</strong> — Personal Injury Law. Knows intake, case management, liens, and why paralegal turnover is the #1 problem at PI firms.</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\uD83D\uDD27</span><strong>Flux</strong> — HVAC & Plumbing. Knows dispatch, flat-rate pricing, EPA 608, and the tech shortage crisis reshaping home services.</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\uD83C\uDFE5</span><strong>Pulse</strong> — Ambulatory Health. Knows HIPAA, credentialing, MA onboarding, and what happens when a 3-location clinic grows to 10.</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\uD83D\uDD0D</span><strong>Scout</strong> — Product Feedback. Aggregates and surfaces themes from customer feature requests and feedback.</div>' +
+          '</div>' +
+          '<hr class="divider">' +
+          '<div class="section">' +
+            '<h3>How to Use an Agent</h3>' +
+            '<p><strong>1. Click an agent</strong> at their desk to open a chat window. You can open multiple agents at once — drag, resize, and arrange them however you like.</p>' +
+            '<p><strong>2. Ask anything</strong> about their vertical. Good starting prompts:</p>' +
+            '<div class="tip-box"><span class="tip-emoji">\uD83D\uDCA1</span>"Explain how [role] works at a [size] company"<br>"What software do they already use?"<br>"Write a blog post about [pain point]"<br>"How is Trainual different from [competitor]?"</div>' +
+            '<p><strong>3. Manage sessions</strong> by clicking the menu icon (\u2630) to open the sidebar. Start new chats, switch between sessions, or delete old ones.</p>' +
+            '<p><strong>4. Copy responses</strong> by hovering over any agent message and clicking the copy icon.</p>' +
+          '</div>' +
+          '<hr class="divider">' +
+          '<div class="section">' +
+            '<h3>Window Controls</h3>' +
+            '<p>\uD83D\uDD34 <strong>Red</strong> — Close the window</p>' +
+            '<p>\uD83D\uDFE1 <strong>Yellow</strong> — Minimize (hide/show)</p>' +
+            '<p>\uD83D\uDFE2 <strong>Green</strong> — Maximize / Restore</p>' +
+            '<p>Drag the title bar to move. Drag the bottom-right corner to resize.</p>' +
+          '</div>' +
+          '<hr class="divider">' +
+          '<div class="section">' +
+            '<h3>Tips for Best Results</h3>' +
+            '<div class="tip-box"><span class="tip-emoji">\u2705</span>Be specific about company size — a 30-person GC operates very differently from a 200-person one.</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\u2705</span>Ask for content in the customer\'s language, not Trainual\'s marketing language.</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\u2705</span>Use competitive intel for positioning — ask "How is Trainual different from X?" not "Why is Trainual better?"</div>' +
+            '<div class="tip-box"><span class="tip-emoji">\u2705</span>Open multiple agents to compare how different verticals handle the same problem (e.g., onboarding).</div>' +
+          '</div>' +
+          '<hr class="divider">' +
+          '<div class="section">' +
+            '<h3>Questions or Feedback?</h3>' +
+            '<p>Click the \uD83D\uDDE3\uFE0F Talk to Human button in the left sidebar to reach the team. We\'re always iterating on these agents — your feedback makes them better.</p>' +
+          '</div>';
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // FEATURE: AGENT ROSTER
+    // ═══════════════════════════════════════
+    function openAgentRoster() {
+      openPopup('roster', 'Agent Roster', '\uD83D\uDCCB', '#8a6a3a', function(body) {
+        var html = '<h2>\uD83D\uDCCB Agent Roster</h2><p>Click any agent to open their chat window.</p><div class="roster-grid">';
+        var allAgents = [];
+        AGENTS.forEach(function(cat) { cat.agents.forEach(function(a) { allAgents.push(a); }); });
+        var pc = PIXEL_CHARS;
+        allAgents.forEach(function(a) {
+          var color = (pc[a.id] || pc.scout).color;
+          var isOnline = a.webhook !== '';
+          html += '<div class="roster-card" data-agent="' + a.id + '" style="--card-color:' + color + '">' +
+            '<div class="roster-emoji">' + a.emoji + '</div>' +
+            '<div class="roster-name" style="color:' + color + '">' + escapeHtml(a.name) + '</div>' +
+            '<div class="roster-role">' + escapeHtml(a.role) + '</div>' +
+            '<div class="roster-desc">' + escapeHtml(a.desc) + '</div>' +
+            '<div class="roster-status ' + (isOnline ? 'online' : 'offline') + '">' + (isOnline ? '\u25CF Online' : '\u25CB Coming soon') + '</div>' +
+          '</div>';
+        });
+        html += '</div>';
+        body.innerHTML = html;
+        body.querySelectorAll('.roster-card').forEach(function(card) {
+          card.addEventListener('click', function() {
+            var agentId = card.dataset.agent;
+            if (agentMap[agentId] && agentMap[agentId].webhook) showChat(agentId);
+          });
+        });
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // FEATURE: SLOT MACHINE
+    // ═══════════════════════════════════════
+    var SLOT_FACTS = [
+      { emoji: '\uD83D\uDD28', vertical: 'Construction', fact: 'OSHA\'s "Fatal Four" — falls, struck-by, electrocution, and caught-in/between — account for over 60% of construction worker deaths every year.' },
+      { emoji: '\uD83D\uDD28', vertical: 'Construction', fact: 'The average commercial construction company spends $1,500-$2,500 per employee annually on safety training alone.' },
+      { emoji: '\uD83D\uDD28', vertical: 'Construction', fact: 'A superintendent on a $20M project manages 80-150 workers daily, yet most have zero formal management training.' },
+      { emoji: '\uD83D\uDD28', vertical: 'Construction', fact: 'Toolbox talks take just 10-15 minutes but can reduce jobsite incidents by up to 50% when done consistently.' },
+      { emoji: '\uD83D\uDD28', vertical: 'Construction', fact: 'Construction firms lose an estimated 35% of project time to rework caused by miscommunication and lack of documented processes.' },
+      { emoji: '\u2696\uFE0F', vertical: 'PI Law', fact: 'The average PI firm converts only 25-35% of inbound leads. Top performers hit 50%+ by responding in under 5 minutes.' },
+      { emoji: '\u2696\uFE0F', vertical: 'PI Law', fact: 'Paralegal turnover at PI firms averages 25-30% annually — higher than almost any other legal specialty.' },
+      { emoji: '\u2696\uFE0F', vertical: 'PI Law', fact: 'A single missed statute of limitations can result in a malpractice claim worth the entire case value — sometimes millions.' },
+      { emoji: '\u2696\uFE0F', vertical: 'PI Law', fact: 'PI firms running on contingency fees typically spend $3,000-$10,000 per signed case in marketing costs before seeing any revenue.' },
+      { emoji: '\u2696\uFE0F', vertical: 'PI Law', fact: 'The average PI case takes 12-18 months to settle. During that time, the firm has zero revenue from that case but ongoing costs.' },
+      { emoji: '\uD83D\uDD27', vertical: 'HVAC', fact: 'The HVAC industry will need 115,000+ new technicians by 2026. The average tech is 55 years old and nearing retirement.' },
+      { emoji: '\uD83D\uDD27', vertical: 'HVAC', fact: 'A top-performing HVAC tech generates $400,000-$600,000 in annual revenue. Losing one costs a company 3-6 months of ramp-up time.' },
+      { emoji: '\uD83D\uDD27', vertical: 'HVAC', fact: 'EPA Section 608 violations carry fines of up to $44,539 per day. Yet many small shops let new hires work on refrigerant before certification.' },
+      { emoji: '\uD83D\uDD27', vertical: 'HVAC', fact: 'Maintenance agreements (PMAs) have 80%+ retention rates and provide predictable recurring revenue — but only 30% of companies actively sell them.' },
+      { emoji: '\uD83D\uDD27', vertical: 'HVAC', fact: 'The average service callback rate in HVAC is 3-5%. Each callback costs the company $250-$400 in lost revenue and truck rolls.' },
+      { emoji: '\uD83C\uDFE5', vertical: 'Health', fact: 'HIPAA violation penalties range from $137 to $68,928 per incident. Repeat violations can trigger DOJ criminal referrals.' },
+      { emoji: '\uD83C\uDFE5', vertical: 'Health', fact: 'The average medical assistant takes 90 days to reach full productivity. Clinics without structured onboarding see 40%+ first-year turnover.' },
+      { emoji: '\uD83C\uDFE5', vertical: 'Health', fact: 'Provider credentialing takes 90-120 days. A single missing document can delay a new physician from seeing patients for weeks.' },
+      { emoji: '\uD83C\uDFE5', vertical: 'Health', fact: 'Multi-location clinics growing from 3 to 10 sites report a 60% increase in compliance incidents without standardized training.' },
+      { emoji: '\uD83C\uDFE5', vertical: 'Health', fact: 'Clean claim rates below 95% can cost a 10-provider practice over $200,000 annually in denied revenue and rework.' }
+    ];
+
+    function openSlotMachine() {
+      openPopup('slots', 'Slot Machine', '\uD83C\uDFB0', '#c44a3a', function(body) {
+        var emojis = ['\uD83D\uDD28', '\u2696\uFE0F', '\uD83D\uDD27', '\uD83C\uDFE5'];
+        body.innerHTML =
+          '<div class="slot-machine">' +
+            '<h2>\uD83C\uDFB0 Industry Fact Machine</h2>' +
+            '<p>Pull the lever for a random industry fact!</p>' +
+            '<div class="slot-reels">' +
+              '<div class="slot-reel" id="reel1">\uD83D\uDD28</div>' +
+              '<div class="slot-reel" id="reel2">\u2696\uFE0F</div>' +
+              '<div class="slot-reel" id="reel3">\uD83D\uDD27</div>' +
+            '</div>' +
+            '<button class="slot-pull-btn" id="slotPull">\u25B6 PULL LEVER</button>' +
+            '<div class="slot-result" id="slotResult">' +
+              '<div class="fact-label">YOUR FACT</div>' +
+              'Hit the lever to learn something new about your verticals!' +
+            '</div>' +
+          '</div>';
+
+        var reels = [body.querySelector('#reel1'), body.querySelector('#reel2'), body.querySelector('#reel3')];
+        var pullBtn = body.querySelector('#slotPull');
+        var result = body.querySelector('#slotResult');
+        var spinning = false;
+
+        pullBtn.addEventListener('click', function() {
+          if (spinning) return;
+          spinning = true;
+          pullBtn.disabled = true;
+          pullBtn.textContent = 'SPINNING...';
+          result.innerHTML = '<div class="fact-label">SPINNING...</div>\uD83C\uDFB2';
+
+          reels.forEach(function(r) { r.classList.add('spinning'); });
+
+          var intervals = reels.map(function(r) {
+            return setInterval(function() {
+              r.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            }, 80);
+          });
+
+          // Stop reels one by one
+          setTimeout(function() {
+            clearInterval(intervals[0]);
+            reels[0].classList.remove('spinning');
+          }, 600);
+          setTimeout(function() {
+            clearInterval(intervals[1]);
+            reels[1].classList.remove('spinning');
+          }, 1000);
+          setTimeout(function() {
+            clearInterval(intervals[2]);
+            reels[2].classList.remove('spinning');
+
+            // Pick random fact
+            var fact = SLOT_FACTS[Math.floor(Math.random() * SLOT_FACTS.length)];
+            reels[0].textContent = fact.emoji;
+            reels[1].textContent = fact.emoji;
+            reels[2].textContent = fact.emoji;
+
+            result.innerHTML = '<div class="fact-label">' + escapeHtml(fact.vertical).toUpperCase() + ' FACT</div>' + escapeHtml(fact.fact);
+            pullBtn.disabled = false;
+            pullBtn.textContent = '\u25B6 PULL AGAIN';
+            spinning = false;
+          }, 1400);
+        });
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // FEATURE: TIP OF THE DAY
+    // ═══════════════════════════════════════
+    var DAILY_TIPS = [
+      { emoji: '\uD83C\uDFAF', tip: 'Ask agents to explain an industry concept "like I\'m pitching to a VP." They\'ll adjust the detail level and business framing automatically.' },
+      { emoji: '\uD83D\uDD0D', tip: 'Use Forge and Flux together to compare how construction and HVAC handle seasonal hiring. The parallels might surprise you.' },
+      { emoji: '\u270D\uFE0F', tip: 'When writing vertical content, ask the agent: "What words would this customer actually use?" — not "What should Trainual say?"' },
+      { emoji: '\uD83C\uDFC6', tip: 'Ask Lex "What keeps a PI managing partner up at night?" for instant empathy-building context before writing any PI content.' },
+      { emoji: '\uD83D\uDCA1', tip: 'Open two agents side by side and ask both: "What does onboarding look like in your industry?" — great for cross-vertical content.' },
+      { emoji: '\uD83D\uDCCB', tip: 'Use agents for competitive intel: "How is Trainual different from [competitor]?" gets you honest, nuanced positioning — not generic praise.' },
+      { emoji: '\uD83D\uDE80', tip: 'Ask Pulse about HIPAA training requirements — it\'s one of the strongest triggers for healthcare companies to buy Trainual.' },
+      { emoji: '\uD83D\uDD27', tip: 'Flux knows the tech shortage crisis inside and out. Ask it to write a "tech ramp-up time" blog post — it\'s HVAC\'s biggest pain point.' },
+      { emoji: '\uD83D\uDCC8', tip: 'Want to understand deal sizes? Ask any agent: "Walk me through the org chart of a [50/100/200]-person company in your vertical."' },
+      { emoji: '\uD83C\uDFA8', tip: 'Ask agents to write in specific formats: LinkedIn posts, email sequences, one-pagers, blog intros. They adapt tone to the medium.' },
+      { emoji: '\uD83E\uDD1D', tip: 'The agents know what Trainual does and doesn\'t do. If a competitor is genuinely better at something, they\'ll tell you — use that honesty in content.' },
+      { emoji: '\uD83D\uDDD3\uFE0F', tip: 'Construction is seasonal. Ask Forge about spring ramp-up training needs — great timing for Q1/Q2 marketing campaigns.' }
+    ];
+
+    function openTipOfDay() {
+      openPopup('tip', 'Tip of the Day', '\uD83D\uDCA1', '#ca9a2a', function(body) {
+        var dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+        var todayTip = DAILY_TIPS[dayOfYear % DAILY_TIPS.length];
+        var html = '<h2>\uD83D\uDCA1 Tip of the Day</h2>' +
+          '<div class="tip-box" style="font-size:15px;line-height:1.7;padding:20px 22px">' +
+            '<span class="tip-emoji" style="font-size:24px">' + todayTip.emoji + '</span><br><br>' +
+            escapeHtml(todayTip.tip) +
+          '</div>' +
+          '<hr class="divider">' +
+          '<h3>More Tips</h3>';
+        DAILY_TIPS.forEach(function(t, i) {
+          if (i === dayOfYear % DAILY_TIPS.length) return;
+          html += '<div class="tip-box"><span class="tip-emoji">' + t.emoji + '</span>' + escapeHtml(t.tip) + '</div>';
+        });
+        body.innerHTML = html;
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // FEATURE: LO-FI RADIO
+    // ═══════════════════════════════════════
+    var radioAudio = null;
+    var radioPlaying = false;
+
+    function toggleRadio() {
+      if (!radioAudio) {
+        radioAudio = new Audio();
+        radioAudio.crossOrigin = 'anonymous';
+        // Free lo-fi stream
+        radioAudio.src = 'https://streams.fluxfm.de/Chillhop/mp3-128/streams.fluxfm.de/';
+        radioAudio.loop = false;
+        radioAudio.volume = 0.3;
+      }
+      var radioLink = document.querySelector('.radio-toggle');
+      if (radioPlaying) {
+        radioAudio.pause();
+        radioPlaying = false;
+        if (radioLink) radioLink.classList.remove('playing');
+      } else {
+        radioAudio.play().catch(function() {
+          // If stream fails, use Tone.js-style oscillator white noise as fallback ambiance
+          console.log('Radio stream unavailable');
+        });
+        radioPlaying = true;
+        if (radioLink) radioLink.classList.add('playing');
       }
     }
 
     // ═══════════════════════════════════════
-    // EVENTS
+    // FEATURE: MINI-GAME (Trainual Collect)
     // ═══════════════════════════════════════
-    function closeSidebar() { sidebar.classList.remove('open'); }
+    function openMiniGame() {
+      openPopup('game', 'Mini Game', '\uD83D\uDD79\uFE0F', '#3a7aea', function(body) {
+        body.innerHTML =
+          '<div class="game-container">' +
+            '<h2>\uD83D\uDD79\uFE0F Trainual Runner</h2>' +
+            '<p>Jump over obstacles to collect training docs!<br>Press <strong>Space</strong> or <strong>tap</strong> to jump.</p>' +
+            '<canvas class="game-canvas" id="gameCanvas" width="400" height="200"></canvas>' +
+            '<div class="game-score" id="gameScoreDisplay">Score: 0 | Best: 0</div>' +
+            '<button class="game-start-btn" id="gameStartBtn">\u25B6 START GAME</button>' +
+          '</div>';
 
-    backBtn.addEventListener('click', showHub);
-    sidebarToggle.addEventListener('click', function() { sidebar.classList.toggle('open'); });
-    sidebarOverlay.addEventListener('click', closeSidebar);
-    sendBtn.addEventListener('click', sendMessage);
+        var canvas = body.querySelector('#gameCanvas');
+        var ctx = canvas.getContext('2d');
+        var scoreEl = body.querySelector('#gameScoreDisplay');
+        var startBtn = body.querySelector('#gameStartBtn');
+        var running = false, score = 0, bestScore = 0;
+        var playerY = 160, playerVy = 0, isJumping = false;
+        var obstacles = [], collectibles = [], frameCount = 0;
+        var GRAVITY = 0.6, JUMP_FORCE = -10, GROUND = 160, SPEED = 3;
 
-    inputEl.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-    });
+        function drawPixelRect(x, y, w, h, color) {
+          ctx.fillStyle = color;
+          ctx.fillRect(Math.round(x), Math.round(y), w, h);
+        }
 
-    inputEl.addEventListener('input', function() {
-      inputEl.style.height = '24px';
-      inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
-    });
+        function spawnObstacle() {
+          obstacles.push({ x: 420, y: GROUND, w: 16, h: 24 + Math.random() * 16 });
+        }
 
-    newChatBtn.addEventListener('click', function() { createSession(); renderSessionList(); inputEl.focus(); });
+        function spawnCollectible() {
+          collectibles.push({ x: 420, y: GROUND - 30 - Math.random() * 40, collected: false });
+        }
 
+        function reset() {
+          playerY = GROUND; playerVy = 0; isJumping = false;
+          obstacles = []; collectibles = []; frameCount = 0; score = 0;
+          SPEED = 3;
+        }
+
+        function update() {
+          frameCount++;
+          if (frameCount % 90 === 0) spawnObstacle();
+          if (frameCount % 60 === 0) spawnCollectible();
+          if (frameCount % 300 === 0) SPEED = Math.min(6, SPEED + 0.3);
+
+          // Player physics
+          playerVy += GRAVITY;
+          playerY += playerVy;
+          if (playerY >= GROUND) { playerY = GROUND; playerVy = 0; isJumping = false; }
+
+          // Move obstacles
+          obstacles.forEach(function(o) { o.x -= SPEED; });
+          obstacles = obstacles.filter(function(o) { return o.x > -20; });
+
+          // Move collectibles
+          collectibles.forEach(function(c) { c.x -= SPEED; });
+          collectibles = collectibles.filter(function(c) { return c.x > -20; });
+
+          // Collision detection
+          for (var i = 0; i < obstacles.length; i++) {
+            var o = obstacles[i];
+            if (20 < o.x + o.w && 20 + 16 > o.x && playerY < o.y + 4 && playerY + 20 > o.y - o.h + 4) {
+              running = false;
+              if (score > bestScore) bestScore = score;
+              scoreEl.textContent = 'Game Over! Score: ' + score + ' | Best: ' + bestScore;
+              startBtn.textContent = '\u25B6 PLAY AGAIN';
+              startBtn.style.display = 'inline-block';
+              return;
+            }
+          }
+
+          // Collect items
+          collectibles.forEach(function(c) {
+            if (!c.collected && Math.abs(24 - c.x) < 18 && Math.abs(playerY - c.y) < 18) {
+              c.collected = true;
+              score += 10;
+            }
+          });
+
+          score += 1;
+          scoreEl.textContent = 'Score: ' + score + ' | Best: ' + bestScore;
+        }
+
+        function draw() {
+          // Sky
+          ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, 400, 200);
+
+          // Stars
+          ctx.fillStyle = '#4a4a6a';
+          [[30,20],[80,40],[150,15],[200,50],[280,25],[350,35],[120,60]].forEach(function(s) {
+            ctx.fillRect(s[0], s[1], 2, 2);
+          });
+
+          // Ground
+          drawPixelRect(0, 180, 400, 20, '#3a3a52');
+          for (var g = 0; g < 400; g += 8) drawPixelRect(g, 180, 8, 2, '#4a4a62');
+
+          // Player (little pixel person)
+          var py = playerY;
+          drawPixelRect(20, py - 16, 12, 12, '#eaa02a'); // head
+          drawPixelRect(18, py - 4, 16, 12, '#3a3a52');  // body
+          drawPixelRect(18, py + 8, 6, 8, '#5a4a3a');    // left leg
+          drawPixelRect(28, py + 8, 6, 8, '#5a4a3a');    // right leg
+          drawPixelRect(22, py - 14, 3, 3, '#fff');       // eye
+          drawPixelRect(28, py - 14, 3, 3, '#fff');       // eye
+
+          // Obstacles (pixel cones)
+          ctx.fillStyle = '#c44a3a';
+          obstacles.forEach(function(o) {
+            ctx.beginPath();
+            ctx.moveTo(o.x + o.w / 2, o.y - o.h);
+            ctx.lineTo(o.x + o.w, o.y + 4);
+            ctx.lineTo(o.x, o.y + 4);
+            ctx.fill();
+            drawPixelRect(o.x - 2, o.y + 2, o.w + 4, 4, '#a83a2a');
+          });
+
+          // Collectibles (floating docs)
+          collectibles.forEach(function(c) {
+            if (c.collected) return;
+            drawPixelRect(c.x, c.y, 12, 14, '#f5f0e0');
+            drawPixelRect(c.x + 2, c.y + 3, 8, 1, '#aaa');
+            drawPixelRect(c.x + 2, c.y + 6, 6, 1, '#aaa');
+            drawPixelRect(c.x + 2, c.y + 9, 7, 1, '#aaa');
+          });
+        }
+
+        function gameLoop() {
+          if (!running) return;
+          update();
+          draw();
+          requestAnimationFrame(gameLoop);
+        }
+
+        function jump() {
+          if (!isJumping && running) {
+            playerVy = JUMP_FORCE;
+            isJumping = true;
+          }
+        }
+
+        startBtn.addEventListener('click', function() {
+          reset();
+          running = true;
+          startBtn.style.display = 'none';
+          gameLoop();
+        });
+
+        // Jump controls
+        document.addEventListener('keydown', function(e) {
+          if (e.code === 'Space' && running) { e.preventDefault(); jump(); }
+        });
+        canvas.addEventListener('click', jump);
+        canvas.addEventListener('touchstart', function(e) { e.preventDefault(); jump(); });
+
+        // Draw initial state
+        ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, 400, 200);
+        drawPixelRect(0, 180, 400, 20, '#3a3a52');
+        ctx.fillStyle = '#6a6a8a'; ctx.font = '12px "Press Start 2P"';
+        ctx.fillText('Press START', 130, 100);
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // RENDERING — Pixel Workroom Hub
+    // ═══════════════════════════════════════
+    function renderHub() {
+      // Side navs
+      var leftNav = document.getElementById('sideNavLeft');
+      var rightNav = document.getElementById('sideNavRight');
+      leftNav.innerHTML = '';
+      rightNav.innerHTML = '';
+
+      SIDE_NAV_LEFT.forEach(function(item) {
+        var link = document.createElement('div');
+        link.className = 'side-link';
+        link.innerHTML = '<div class="side-icon">' + item.icon + '</div><div class="side-label">' + item.label + '</div>';
+        if (item.action) link.addEventListener('click', item.action);
+        if (item.radioToggle) link.classList.add('radio-toggle');
+        leftNav.appendChild(link);
+      });
+
+      // Bookshelf
+      leftNav.insertAdjacentHTML('beforeend',
+        '<div class="bookshelf">' +
+          '<div class="bookshelf-top"></div>' +
+          '<div class="shelf-row">' +
+            '<div class="book" style="height:22px;background:#c44a3a"></div>' +
+            '<div class="book" style="height:18px;background:#3a7aea"></div>' +
+            '<div class="book" style="height:24px;background:#4a8a4a"></div>' +
+            '<div class="book" style="height:16px;background:#ea8a2a"></div>' +
+            '<div class="book" style="height:20px;background:#8a5adc"></div>' +
+            '<div class="book" style="height:22px;background:#da4a8a"></div>' +
+          '</div>' +
+          '<div class="shelf-divider"></div>' +
+          '<div class="shelf-row">' +
+            '<div class="book" style="height:20px;background:#3aaa6a"></div>' +
+            '<div class="book" style="height:16px;background:#ca9a2a"></div>' +
+            '<div class="book" style="height:24px;background:#5a5a7a"></div>' +
+            '<div class="book" style="height:18px;background:#ea6a4a"></div>' +
+            '<div class="book" style="height:22px;background:#3a6aaa"></div>' +
+          '</div>' +
+          '<div class="shelf-divider"></div>' +
+          '<div class="furniture-label">bookshelf</div>' +
+        '</div>');
+
+      // Filing cabinet
+      leftNav.insertAdjacentHTML('beforeend',
+        '<div class="filing-cabinet">' +
+          '<div class="cabinet-body">' +
+            '<div class="cabinet-drawer"><div class="cabinet-handle"></div></div>' +
+            '<div class="cabinet-drawer"><div class="cabinet-handle"></div></div>' +
+            '<div class="cabinet-drawer"><div class="cabinet-handle"></div></div>' +
+          '</div>' +
+          '<div class="furniture-label">files</div>' +
+        '</div>');
+
+      SIDE_NAV_RIGHT.forEach(function(item) {
+        var link = document.createElement('div');
+        link.className = 'side-link';
+        if (item.radioToggle) link.classList.add('radio-toggle');
+        link.innerHTML = '<div class="side-icon">' + item.icon + '</div><div class="side-label">' + item.label + '</div>' + (item.radioToggle ? '<div class="radio-waves"></div>' : '');
+        if (item.action) link.addEventListener('click', item.action);
+        rightNav.appendChild(link);
+      });
+
+      // Water cooler
+      rightNav.insertAdjacentHTML('beforeend',
+        '<div class="water-cooler">' +
+          '<div class="cooler-jug"></div>' +
+          '<div class="cooler-body">' +
+            '<div class="cooler-tap hot"></div>' +
+            '<div class="cooler-tap cold"></div>' +
+          '</div>' +
+          '<div class="cooler-stand"></div>' +
+          '<div class="furniture-label">water</div>' +
+        '</div>');
+
+      // Desk area
+      var deskArea = document.getElementById('deskArea');
+      deskArea.innerHTML = '';
+
+      // Flatten all agents
+      var allAgents = [];
+      AGENTS.forEach(function(cat) {
+        cat.agents.forEach(function(a) { allAgents.push(a); });
+      });
+
+      // Build rows: 3 + coffee bar + 3
+      var rows = [
+        { agents: allAgents.slice(0, 3), cls: 'back' },
+        { agents: allAgents.slice(3, 6), cls: 'front' }
+      ];
+
+      // Coffee bar HTML
+      var coffeeBarHtml = '<div class="coffee-bar">' +
+        '<span class="coffee-plant">&#x1F331;</span>' +
+        '<div style="display:flex;flex-direction:column;align-items:center">' +
+          '<div style="display:flex;align-items:flex-end;gap:8px">' +
+            '<div class="coffee-machine"></div>' +
+            '<div style="display:flex;flex-direction:column;align-items:center">' +
+              '<div class="coffee-counter">' +
+                '<div class="coffee-cup"></div>' +
+                '<div class="coffee-cup"></div>' +
+                '<div class="coffee-cup"></div>' +
+              '</div>' +
+              '<div class="coffee-counter-legs">' +
+                '<div class="coffee-counter-leg"></div>' +
+                '<div class="coffee-counter-leg"></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="coffee-label">&#x2615; coffee bar</div>' +
+        '</div>' +
+        '<span class="coffee-plant">&#x1FAB4;</span>' +
+      '</div>';
+
+      rows.forEach(function(rowData, ri) {
+        var row = document.createElement('div');
+        row.className = 'desk-row ' + rowData.cls;
+
+        rowData.agents.forEach(function(agent, ai) {
+          var isActive = agent.webhook !== '';
+          var pc = PIXEL_CHARS[agent.id] || PIXEL_CHARS.scout;
+
+          var unit = document.createElement('div');
+          unit.className = 'desk-unit' + (!isActive ? ' offline' : '');
+          unit.style.animationDelay = ((ri * 0.15) + (ai * 0.08)) + 's';
+
+          unit.innerHTML =
+            '<div class="pixel-char">' + pc.svg + '</div>' +
+            '<div class="chair"></div>' +
+            '<div class="desk-table">' +
+              '<div class="laptop-screen"></div>' +
+              '<div class="laptop-keys"></div>' +
+            '</div>' +
+            '<div class="desk-legs">' +
+              '<div class="desk-leg"></div>' +
+              '<div class="desk-leg"></div>' +
+            '</div>' +
+            '<div class="desk-name" style="color:' + pc.nameColor + '">' + escapeHtml(agent.name) + '</div>' +
+            '<div class="desk-role">' + escapeHtml(agent.role) + '</div>' +
+            '<div class="desk-status ' + (isActive ? 'online' : 'away') + '">' +
+              (isActive ? '\u25CF Online' : '\u25CB Coming soon') +
+            '</div>';
+
+          if (isActive) {
+            unit.addEventListener('click', function() { showChat(agent.id); });
+          }
+
+          row.appendChild(unit);
+        });
+
+        deskArea.appendChild(row);
+        if (ri === 0) deskArea.insertAdjacentHTML('beforeend', coffeeBarHtml);
+      });
+    }
+
+    // ═══════════════════════════════════════
+    // GLOBAL KEYBOARD SHORTCUTS
+    // ═══════════════════════════════════════
     document.addEventListener('keydown', function(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'n' && currentAgent) { e.preventDefault(); createSession(); inputEl.focus(); }
-      if (e.key === 'Escape' && currentAgent) showHub();
+      if (e.key === 'Escape') {
+        // Close the topmost window (chat or popup)
+        var topId = null, topZ = 0, topType = null;
+        Object.keys(openWindows).forEach(function(id) {
+          var z = parseInt(openWindows[id].el.style.zIndex) || 0;
+          if (z > topZ) { topZ = z; topId = id; topType = 'chat'; }
+        });
+        Object.keys(popupWindows).forEach(function(id) {
+          var z = parseInt(popupWindows[id].el.style.zIndex) || 0;
+          if (z > topZ) { topZ = z; topId = id; topType = 'popup'; }
+        });
+        if (topId && topType === 'chat') closeWindow(topId);
+        else if (topId && topType === 'popup') {
+          var pw = popupWindows[topId];
+          pw.el.classList.add('closing');
+          setTimeout(function() { pw.el.remove(); delete popupWindows[topId]; }, 200);
+        }
+      }
     });
 
     // ═══════════════════════════════════════
-    // INIT
+    // AUTH (Supabase + Google)
     // ═══════════════════════════════════════
-    renderHub();
+    var SUPABASE_URL = 'https://nxafcyvvwvpcgzjdftib.supabase.co';
+    var SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54YWZjeXZ2d3ZwY2d6amRmdGliIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0ODE2MjksImV4cCI6MjA1ODA1NzYyOX0.YpznBa_y0E8ukmP5v-epXwzc1ADep0EjkITnMd9V-CA';
+    var ALLOWED_DOMAIN = 'trainual.com';
+
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+    var authGate = document.getElementById('authGate');
+    var authError = document.getElementById('authError');
+    var googleSignIn = document.getElementById('googleSignIn');
+    var userPill = document.getElementById('userPill');
+    var userAvatar = document.getElementById('userAvatar');
+    var userName = document.getElementById('userName');
+    var signOutBtn = document.getElementById('signOutBtn');
+    var themeSwitcher = document.getElementById('themeSwitcher');
+
+    var THEME_KEY = 'agent_hub_theme';
+    var appInitialized = false;
+
+    function setTheme(theme) {
+      var selected = theme === 'classy' ? 'classy' : 'fun';
+      document.body.setAttribute('data-theme', selected);
+      localStorage.setItem(THEME_KEY, selected);
+      var buttons = document.querySelectorAll('.theme-btn');
+      buttons.forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-theme') === selected);
+      });
+    }
+
+    function initTheme() {
+      var savedTheme = localStorage.getItem(THEME_KEY) || 'fun';
+      setTheme(savedTheme);
+      document.querySelectorAll('.theme-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          setTheme(btn.getAttribute('data-theme'));
+        });
+      });
+    }
+
+    function showApp(user) {
+      if (appInitialized) return;
+      appInitialized = true;
+      authGate.classList.add('hidden');
+      document.getElementById('hubView').style.visibility = 'visible';
+
+      // User pill
+      var meta = user.user_metadata || {};
+      userName.textContent = meta.full_name || meta.name || user.email;
+      userAvatar.src = meta.avatar_url || meta.picture || '';
+      if (!userAvatar.src) userAvatar.style.display = 'none';
+      userPill.style.display = 'flex';
+      themeSwitcher.style.display = 'flex';
+
+      renderHub();
+    }
+
+    function showAuthError(msg) {
+      authError.textContent = msg;
+      authError.classList.remove('hidden');
+    }
+
+    function checkDomain(email) {
+      if (!email) return false;
+      return email.split('@')[1] === ALLOWED_DOMAIN;
+    }
+
+    // Sign in with Google
+    googleSignIn.addEventListener('click', async function() {
+      authError.classList.add('hidden');
+      var { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + window.location.pathname
+        }
+      });
+      if (error) showAuthError(error.message);
+    });
+
+    // Sign out
+    signOutBtn.addEventListener('click', async function() {
+      await supabase.auth.signOut();
+      appInitialized = false;
+      userPill.style.display = 'none';
+      themeSwitcher.style.display = 'none';
+      document.getElementById('hubView').style.visibility = 'hidden';
+      authGate.classList.remove('hidden');
+      authError.classList.add('hidden');
+    });
+
+    // ═══════════════════════════════════════
+    // INIT — check session on load
+    // ═══════════════════════════════════════
+    initTheme();
+
+    (async function() {
+      var { data: { session } } = await supabase.auth.getSession();
+
+      if (session && session.user) {
+        if (checkDomain(session.user.email)) {
+          showApp(session.user);
+        } else {
+          // Wrong domain — sign them out
+          await supabase.auth.signOut();
+          showAuthError('Access restricted to @' + ALLOWED_DOMAIN + ' accounts.');
+        }
+      }
+
+      // Listen for auth state changes (handles OAuth redirect)
+      supabase.auth.onAuthStateChange(async function(event, session) {
+        if (event === 'SIGNED_IN' && session && session.user) {
+          if (checkDomain(session.user.email)) {
+            showApp(session.user);
+          } else {
+            await supabase.auth.signOut();
+            showAuthError('Access restricted to @' + ALLOWED_DOMAIN + ' accounts.');
+          }
+        }
+      });
+    })();
   </script>
-</body>
-</html>
+
+
+</body></html>
